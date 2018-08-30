@@ -5,13 +5,13 @@ source("R/rcp_functions.R")
 
 # Import the 3 different radius ratio files
 rcp_1_upload <- read.table("C:/Users/galen/Documents/Research/point_patterns/041718rcp_1_FinalConfig",sep = " ",col.names = c("x","y","z","type"))
-rcp_11 <- scale(createSpat(rcp_1_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = 0.0259528)
+rcp_11 <- scaleRCP(createSpat(rcp_1_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = 0.0259528)
 
 rcp_2_upload <- read.table("C:/Users/galen/Documents/Research/point_patterns/041718rcp_2_FinalConfig",sep = " ",col.names = c("x","y","z","type"))
-rcp_12 <- scale(createSpat(rcp_2_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = 0.0252329)
+rcp_12 <- scaleRCP(createSpat(rcp_2_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = 0.0252329)
 
 rcp_3_upload <- read.table("C:/Users/galen/Documents/Research/point_patterns/041718rcp_3_FinalConfig",sep = " ",col.names = c("x","y","z","type"))
-rcp_13 <- scale(createSpat(rcp_3_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = 0.0244723)
+rcp_13 <- scaleRCP(createSpat(rcp_3_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = 0.0244723)
 
 # Caculate function on the different patterns
 

@@ -10,7 +10,7 @@ r4 <-0.0217032 #1.4 sigma 50%
 r5 <-0.0237094 #1.4 sigma 75%
 
 rcp_1_upload <- read.table("C:/Users/galen/Documents/Research/point_patterns/042918rcp_1_FinalConfig",sep = " ",col.names = c("x","y","z","type"))
-rcp_1 <- scale(createSpat(rcp_1_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = r5)
+rcp_1 <- scaleRCP(createSpat(rcp_1_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = r5)
 
 a <- pcf3est(rcp_1,rmax=2.5,nrval=200)
 plot(a,xlim=c(0,2.5),main="PCF of RCP Pattern")

@@ -18,14 +18,14 @@ rmax <- 15
 #r <- 0.02523824
 p <- vector("list",96)
 temp_upload <- read.table(paste('~/Research/point_patterns/Final/FinalConfig',toString(1),sep=""),sep=" ",col.names=c("x","y","z","type"))
-temp <- scale(createSpat(temp_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = rs[1])
+temp <- scaleRCP(createSpat(temp_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = rs[1])
 base <- panomK3est(0.06,temp,neval,correction = cor,nrval=nrval,rmax=rmax)
 p[[1]] <- base[[1]]
 
 for(i in 2:5){
   t1 <- Sys.time()
   temp_upload <- read.table(paste('~/Research/point_patterns/Final/FinalConfig',toString(i),sep=""),sep=" ",col.names=c("x","y","z","type"))
-  temp <- scale(createSpat(temp_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = rs[i])
+  temp <- scaleRCP(createSpat(temp_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = rs[i])
   temp2  <- panomK3est(0.06,temp,neval,correction = cor,toSub=base[[2]],nrval=nrval,rmax=rmax)
   p[[i]] <- temp2[[1]]
   t2 <- Sys.time()

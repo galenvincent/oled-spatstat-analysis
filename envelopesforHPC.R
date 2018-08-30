@@ -9,7 +9,7 @@ source("/u/cb/dm/galenvincent/bins/rtest/galen_functions.R")
 # Upload the RCP data set(un-stitched)
 r1 <-0.0252429 #1.2 sigma
 rcp_1_upload <- read.table("/u/cb/dm/galenvincent/bins/rtest/FinalConfig1",sep = " ",col.names = c("x","y","z","type"))
-rcp_1 <- scale(createSpat(rcp_1_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = r1)
+rcp_1 <- scaleRCP(createSpat(rcp_1_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = r1)
 
 #Stitch the set together
 rcp <- stitch(rcp_1)

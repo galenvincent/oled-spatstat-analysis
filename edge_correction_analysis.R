@@ -4,7 +4,7 @@ library(rapt)
 # Upload an RCP pattern
 r1 <-0.0252429 #1.2 sigma
 rcp_1_upload <- read.table("C:/Users/galen/Documents/Research/point_patterns/Final/FinalConfig1",sep = " ",col.names = c("x","y","z","type"))
-rcp_1 <- scale(createSpat(rcp_1_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = r1)
+rcp_1 <- scaleRCP(createSpat(rcp_1_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = r1)
 
 # Run random relabeling envelopes with border correction on the full sample up to about 5nm radius
 maxR <- 5
