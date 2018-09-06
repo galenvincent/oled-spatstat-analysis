@@ -1,9 +1,9 @@
 # Comparing border vs trans & iso edge corrections
 library(rapt)
 
-bordRRL <- read.table("C:/Users/galen/Documents/Research/envelope_data/edge_compare_16nm/bord.csv",sep = ",")
-transRRL <- read.table("C:/Users/galen/Documents/Research/envelope_data/edge_compare_16nm/trans.csv",sep = ",")
-isoRRL <- read.table("C:/Users/galen/Documents/Research/envelope_data/edge_compare_16nm/iso.csv",sep = ",")
+bordRRL <- read.table("C:/Users/galen/OneDrive/Documents/Research/envelope_data/edge_compare_16nm/bord.csv",sep = ",")
+transRRL <- read.table("C:/Users/galen/OneDrive/Documents/Research/envelope_data/edge_compare_16nm/bord.csv",sep = ",")
+isoRRL <- read.table("C:/Users/galen/OneDrive/Documents/Research/envelope_data/edge_compare_16nm/bord.csv",sep = ",")
 
 envPlotAdj(list(transRRL,bordRRL,isoRRL),labels = c("Trans","Bord","Iso"),percentiles = c(.95))
 
