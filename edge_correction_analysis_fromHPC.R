@@ -1,9 +1,9 @@
 # Comparing border vs trans & iso edge corrections
 library(rapt)
 
-bordRRL <- read.table("C:/Users/galen/OneDrive/Documents/Research/envelope_data/edge_compare_16nm/bord.csv",sep = ",")
-transRRL <- read.table("C:/Users/galen/OneDrive/Documents/Research/envelope_data/edge_compare_16nm/bord.csv",sep = ",")
-isoRRL <- read.table("C:/Users/galen/OneDrive/Documents/Research/envelope_data/edge_compare_16nm/bord.csv",sep = ",")
+bordRRL <- read.table("C:/Users/galen/OneDrive/Documents/Research/edge_corrections/16nm box/bord.csv",sep = ",")
+transRRL <- read.table("C:/Users/galen/OneDrive/Documents/Research/edge_corrections/16nm box/trans.csv",sep = ",")
+isoRRL <- read.table("C:/Users/galen/OneDrive/Documents/Research/edge_corrections/16nm box/iso.csv",sep = ",")
 
 envPlotAdj(list(transRRL,bordRRL,isoRRL),labels = c("Trans","Bord","Iso"),percentiles = c(.95))
 
@@ -45,8 +45,9 @@ text(5.2,1.2,"Different RCP Generation")
 text(3.8,1,"97% AI")
 
 #####################
+#tests <- list(transRRL,bordRRL,isoRRL)
 # Adjusted envelope plot for this analysis
-envPlotAdj <- function(tests,percentiles=c(.999),ylim=c(-3,3),xlim=c(0,ceiling(max(tests[[1]][,1]))),labels=c("Translation","Isotropic","Border")){
+envPlotAdj <- function(tests,percentiles=c(.999),ylim=c(-3,3),xlim=c(0,ceiling(max(tests[[1]][,1]))),labels=c("Translation","Border","Isotropic")){
   # tests = lists of array of values returned from the rrK3est function above
   # percentiles = vector including the different percentiles you would like to see on the plot (0-1)
   # do these in descending order please
@@ -105,7 +106,7 @@ envPlotAdj <- function(tests,percentiles=c(.999),ylim=c(-3,3),xlim=c(0,ceiling(m
     polygon(c(rvals,rev(rvals)),c(toPlotBigs[,1],rev(toPlotSmalls[,1])),col=color[i])#,border=color[i],lwd=2)
   }
   legend(0,ylim[2],legend=labels,col=c(color[1],color[2],color[3]), lty=c(1,1,1),lwd=c(10,10,10))
-  text(1.7,2.75,paste(toString(percentiles[1]*100),"% AI"))
-
+  text(3,2.4,paste(toString(percentiles[1]*100),"% AI"),pos=4)
+  text(3,2.8,"2000 RR on 16x16 box within 40x40 box",pos=4)
 }
 

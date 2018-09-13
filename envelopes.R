@@ -16,7 +16,7 @@ rcp <- stitch(rcp_1)
 
 #run envelopes on it
 t1 <- Sys.time()
-a <- panomK3est(0.06,rcp_1,50,nrval=20)
+a <- pK3est(0.06,rcp_1,50,nrval=20,anom=TRUE)
 t2 <- Sys.time()
 
 print(t2-t1)

@@ -15,7 +15,7 @@ rcp_1 <- scaleRCP(createSpat(rcp_1_upload[,c("x","y","z")]),newRadius = 0.5,oldR
 rcp <- stitch(rcp_1)
 
 #run envelopes on it
-a <- panomK3est(0.06,rcp,50,nrval=20)
+a <- pK3est(0.06,rcp,50,nrval=20,anom=TRUE)
 
 #export the data from the envelope calculations
 write.table(a[[1]], file = "/u/cb/dm/galenvincent/bins/rtest/data.csv",row.names=FALSE, na="",col.names=FALSE, sep=",")

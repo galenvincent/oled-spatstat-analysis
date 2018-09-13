@@ -8,15 +8,15 @@ rcp_1 <- scaleRCP(createSpat(rcp_1_upload[,c("x","y","z")]),newRadius = 0.5,oldR
 
 # Run random relabeling envelopes with border correction on the full sample up to about 5nm radius
 maxR <- 5
-bordRRL <- panomK3est(0.06,rcp_1,1000,rmax=maxR,correction="bord")
+bordRRL <- pK3est(0.06,rcp_1,1000,rmax=maxR,correction="bord",anom=TRUE)
 
 # Run random relabeling envelopes with trans on smaller inner box sample
 inner.size <- domain(rcp_1)$xrange[2]-maxR*2
 inner.box <- subSquare(rcp_1,rep(inner.size,3))
 
-transRRL <- panomK3est(0.06,inner.box,1000,rmax=maxR,correction="trans",toSub=bordRRL[[2]])
+transRRL <- pK3est(0.06,inner.box,1000,rmax=maxR,correction="trans",anom=TRUE,toSub=bordRRL[[2]])
 
-isoRRL <- panomK3est(0.06,inner.box,1000,rmax=maxR,correction="iso",toSub=bordRRL[[2]])
+isoRRL <- pK3est(0.06,inner.box,1000,rmax=maxR,correction="iso",anom=TRUE,toSub=bordRRL[[2]])
 
 envPlotAdj(list(transRRL[[1]],bordRRL[[1]],isoRRL[[1]]),labels = c("Trans","Bord","Iso"),percentiles = c(.97))
 

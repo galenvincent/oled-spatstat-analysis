@@ -19,14 +19,14 @@ rmax <- 15
 p <- vector("list",96)
 temp_upload <- read.table(paste('~/Research/point_patterns/Final/FinalConfig',toString(1),sep=""),sep=" ",col.names=c("x","y","z","type"))
 temp <- scaleRCP(createSpat(temp_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = rs[1])
-base <- panomK3est(0.06,temp,neval,correction = cor,nrval=nrval,rmax=rmax)
+base <- pK3est(0.06,temp,neval,correction = cor,nrval=nrval,rmax=rmax,anom=TRUE)
 p[[1]] <- base[[1]]
 
 for(i in 2:5){
   t1 <- Sys.time()
   temp_upload <- read.table(paste('~/Research/point_patterns/Final/FinalConfig',toString(i),sep=""),sep=" ",col.names=c("x","y","z","type"))
   temp <- scaleRCP(createSpat(temp_upload[,c("x","y","z")]),newRadius = 0.5,oldRadius = rs[i])
-  temp2  <- panomK3est(0.06,temp,neval,correction = cor,toSub=base[[2]],nrval=nrval,rmax=rmax)
+  temp2  <- pK3est(0.06,temp,neval,correction = cor,anom=TRUE,toSub=base[[2]],nrval=nrval,rmax=rmax)
   p[[i]] <- temp2[[1]]
   t2 <- Sys.time()
   print(i)
@@ -81,11 +81,11 @@ for(j in 1:4){
 
 #####
 # FROM THE HPC
-sameRCP <- read.table('C:/Users/galen/Documents/Research/parent_child/percentOut_40nmbox_oneradius_same.csv',sep=",")
+sameRCP <- read.table('C:/Users/galen/OneDrive/Documents/Research/parent_child/percentOut_sameRCP_manyradius_20nmbox.csv',sep=",")
 sameRCP <- as.numeric(sameRCP$V1)
 plot(hist(sameRCP),col=rgb(1,0,0,.5))
 
-diffRCP <- read.table('C:/Users/galen/Documents/Research/parent_child/percentOut_40nmbox_oneradius_diff.csv',sep=",")
+diffRCP <- read.table('C:/Users/galen/OneDrive/Documents/Research/parent_child/percentOut_sameRCP_manyradius_20nmbox.csv',sep=",")
 diffRCP <- as.numeric(diffRCP$V1)
 
 p1 <- hist(sameRCP)
