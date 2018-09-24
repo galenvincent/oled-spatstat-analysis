@@ -81,11 +81,11 @@ for(j in 1:4){
 
 #####
 # FROM THE HPC
-sameRCP <- read.table('C:/Users/galen/OneDrive/Documents/Research/parent_child/percentOut_sameRCP_manyradius_20nmbox.csv',sep=",")
+sameRCP <- read.table('C:/Users/galen/OneDrive/Documents/Research/parent_child/percentOut_sameRCP_oneradius_20nmbox.csv',sep=",")
 sameRCP <- as.numeric(sameRCP$V1)
 plot(hist(sameRCP),col=rgb(1,0,0,.5))
 
-diffRCP <- read.table('C:/Users/galen/OneDrive/Documents/Research/parent_child/percentOut_sameRCP_manyradius_20nmbox.csv',sep=",")
+diffRCP <- read.table('C:/Users/galen/OneDrive/Documents/Research/parent_child/percentOut_diffRCP_oneradius_20nmbox.csv',sep=",")
 diffRCP <- as.numeric(diffRCP$V1)
 
 p1 <- hist(sameRCP)
@@ -96,7 +96,7 @@ plot(p2,col=rgb(0,0,1,.5),xlim=c(0,8),add=T)
 legend("topright",c('Same RCP 96 times','96 different RCPs'),col=c(rgb(1,0,0),rgb(0,0,1)),lwd=10)
 text(8,650,'6% random relabeling of',pos=2)
 text(8,600,'8000 point RCP patterns',pos=2)
-text(8,500, 'Small radius un-normalized',pos=2)
+text(8,500, 'Used one radius for all patterns',pos=2)
 
 ######################################
 envPlotAdj <- function(tests,percentiles=c(.999),ylim=c(-3,3),xlim=c(0,ceiling(max(tests[[1]][,1])))){
