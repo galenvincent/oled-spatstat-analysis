@@ -1,17 +1,40 @@
 # Script for code profiling and figuring out what to make faster.
 
 # Source files from the correct folders. Note that they need to be sourced for profiling purposes.
-source('C:/Users/galen/OneDrive/Documents/Research/rapt/R/cluster_functions.R')
-source('C:/Users/galen/OneDrive/Documents/Research/rapt/R/rcp_functions.R')
-source('C:/Users/galen/OneDrive/Documents/Research/rapt/R/envelope_functions.R')
-source('C:/Users/galen/OneDrive/Documents/Research/rapt/R/rapt-file.R')
-source('C:/Users/galen/OneDrive/Documents/Research/rapt/R/rapt-extend.R')
-source('C:/Users/galen/OneDrive/Documents/Research/rapt/test files/cluster_test.R')
+source('C:/Users/galen/Documents/Research/rapt/R/cluster_functions.R')
+source('C:/Users/galen/Documents/Research/rapt/R/rcp_functions.R')
+source('C:/Users/galen/Documents/Research/rapt/R/envelope_functions.R')
+source('C:/Users/galen/Documents/Research/rapt/R/rapt-file.R')
+source('C:/Users/galen/Documents/Research/rapt/R/rapt-extend.R')
 library(spatstat)
 library(rgl)
 library(profvis)
 library(parallel)
+#makecluster radius gaussian blur improvement - 11/26/18
+profvis({
+  under <- read.rcp('~/Research/point_patterns/Final/FinalConfig1','~/Research/point_patterns/Final/system1',scaleUp = TRUE,newRadius = 0.5)
+  over <- read.rcp('~/Research/point_patterns/Final/FinalConfig2','~/Research/point_patterns/Final/system2',scaleUp = TRUE,newRadius = 0.5)
+  #under.big <- stitch.size(under, boxSize = c(60,60,60))
+  #over.big <- stitch.size(over, boxSize = c(60,60,60))
+  
+  a <- makecluster(under, over, 0.5,0.5, type = "cr", speed = "superfast", cr = 3, rb = TRUE, rbp = 1)
+  c <- makecluster(under, over, 0.5,0.5, type = "cr", speed = "superfast", cr = 3)
+  
+})
 
+
+#makecluster function improvement 2 - 11/8/18
+profvis({
+  under <- read.rcp('~/Research/point_patterns/Final/FinalConfig1','~/Research/point_patterns/Final/system1',scaleUp = TRUE,newRadius = 0.5)
+  over <- read.rcp('~/Research/point_patterns/Final/FinalConfig3','~/Research/point_patterns/Final/system3',scaleUp = TRUE,newRadius = 0.5)
+  under.big <- stitch.size(under, boxSize = c(60,60,60))
+  over.big <- stitch.size(over, boxSize = c(60,60,60))
+  
+  a <- makecluster(under.big, over.big, 0.5,0.5, type = "cr", speed = "superfast", cr = 3)
+  b <- helpme(under.big, over.big, 0.5,0.5, type = "cr", speed = "superfast", cr = 3)
+  c <- makecluster(under.big, over.big, 0.5,0.5, type = "cr", speed = "superfast", cr = 3, gb = TRUE)
+  
+})
 
 # makecluster function improvement
 profvis({
