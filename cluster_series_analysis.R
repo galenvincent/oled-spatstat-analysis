@@ -189,7 +189,7 @@ for(i in(1:p)){
   #test on different radius values below here
   for(j in 1:n){
     #make cluster
-    cluster <- makecluster(under.big,over.big,0.5,0.5,type="cr",speed="superfast",cr=r[[j]])
+    cluster <- makecluster(under.big,over.big,0.5,0.5,type="cr",speed="superfast",cr=r[[j]],toPlot = TRUE)
 
     #test
     result <- anomK3est(cluster[[1]],toSub,max(env.r),nrow(env.r),correction="trans")
@@ -755,7 +755,8 @@ for(i in 1:n){
 }
 
 # Binomial Radius Blur ----------------------------------------------------
-# Gaussian Blur of cluster radius series
+
+# Two different radii with different proportions series
 rm(list=ls())
 # see how the K-function changes
 under.nums <- seq(2,102,1)
@@ -767,8 +768,8 @@ set.seed(10)
 cluster.size <- c(60,60,60)
 
 # percent of cluster radius to set blur sds
-rbperc <- list(0, 0.05, 0.1, 0.2, 0.3, 0.5,0.6)
-n <- length(rbperc)
+bp <- list(0, 0.2, 0.4, 0.6, 0.8, 1)
+n <- length(bp)
 
 Rm <- matrix(0,101,n)
 Km <- matrix(0,101,n)
@@ -808,7 +809,7 @@ for(i in(1:p)){
   for(j in 1:n){
     cnt <- cnt + 1
     #make cluster
-    cluster <- makecluster(under.big,over.big,0.5,0.5,type="cr",speed="superfast",cr=3,rb=TRUE,rbp=3*rbperc[[j]],s=cnt)
+    cluster <- makecluster(under.big,over.big,0.5,0.5,type="cr",speed="superfast",rb=TRUE,rbmethod = 2,rbp=c(bp[[j]],2,5),s=cnt)
     
     #test
     result <- anomK3est(cluster[[1]],toSub,max(env.r),nrow(env.r),correction="trans")
@@ -816,24 +817,19 @@ for(i in(1:p)){
     tvals <- result$trans
     
     # get out that peak info son
-    
-    #plot(rvals,tvals,type = "n",xlab = "", ylab = "", ylim = c(-10,25))
     rvals.new <- rvals[13:length(rvals)]
     tvals.new <- tvals[13:length(rvals)]
     #get those metrics out
-    metrics <- k3metrics(rvals.new, tvals.new)
+    metrics <- k3metrics(rvals.new, tvals.new, TRUE)
     
-    Km[i,count] <- metrics[[1]]
-    Rm[i,count] <- metrics[[2]]
-    Rdm[i,count] <- metrics[[3]]
-    Rddm[i,count] <- metrics[[4]]
-    Kdm[i,count] <- metrics[[5]]
+    Km[i,j] <- metrics[[1]]
+    Rm[i,j] <- metrics[[2]]
+    Rdm[i,j] <- metrics[[3]]
+    Rddm[i,j] <- metrics[[4]]
+    Kdm[i,j] <- metrics[[5]]
     
-    csep[[count]][[i]] <- cluster[[4]]
-    crs[[count]][[i]] <- cluster[[5]]
-    
-    count <- count + 1
-    
+    csep[[j]][[i]] <- cluster[[4]]
+    crs[[j]][[i]] <- cluster[[5]]
     
     #output
     #fwrite(peak,paste('~/Research/K_cluster_series/gb/result',toString(i),'_',toString(j),'.csv',sep=""),sep=',')
@@ -850,12 +846,22 @@ for(i in(1:p)){
   #repeat
 }
 
-
 Rm <- as.data.frame(Rm)
 Km <- as.data.frame(Km)
 Rdm <- as.data.frame(Rdm)
 Kdm <- as.data.frame(Kdm)
 Rddm <- as.data.frame(Rddm)
+
+fwrite(Rm,'~/Research/K_cluster_series/rbbinom/Rm.csv')
+fwrite(Km,'~/Research/K_cluster_series/rbbinom/Km.csv')
+fwrite(Rdm,'~/Research/K_cluster_series/rbbinom/Rdm.csv')
+fwrite(Kdm,'~/Research/K_cluster_series/rbbinom/Kdm.csv')
+fwrite(Rddm,'~/Research/K_cluster_series/rbbinom/Rddm.csv')
+##fwrite(Rm,'~/scratch/Rcode/rbbinom/Rm.csv')
+##fwrite(Km,'~/scratch/Rcode/rbbinom/Km.csv')
+##fwrite(Rdm,'~/scratch/Rcode/rbbinom/Rdm.csv')
+##fwrite(Kdm,'~/scratch/Rcode/rbbinom/Kdm.csv')
+##fwrite(Rddm,'~/scratch/Rcode/rbbinom/Rddm.csv')
 
 maxnc <- sapply(crs, function(x){max(sapply(x, length))})
 for(i in 1:n){
@@ -867,23 +873,12 @@ for(i in 1:n){
   }
   crsexp <- as.data.frame(crsexp)
   csepexp <- as.data.frame(csepexp)
-  fwrite(crsexp,paste('~/Research/K_cluster_series/rb/crs',toString(i),'.csv',sep = ''))
-  fwrite(csepexp,paste('~/Research/K_cluster_series/rb/csep',toString(i),'.csv',sep = ''))
+  fwrite(crsexp,paste('~/Research/K_cluster_series/rbbinom/crs',toString(i),'.csv',sep = ''))
+  fwrite(csepexp,paste('~/Research/K_cluster_series/rbbinom/csep',toString(i),'.csv',sep = ''))
   
-  ##fwrite(crsexp,paste('~/scratch/Rcode/rb/crs',toString(i),'.csv',sep = ''))
-  ##fwrite(csepexp,paste('~/scratch/Rcode/rb/csep',toString(i),'.csv',sep = ''))
+  ##fwrite(crsexp,paste('~/scratch/Rcode/rbbinom/crs',toString(i),'.csv',sep = ''))
+  ##fwrite(csepexp,paste('~/scratch/Rcode/rbbinom/csep',toString(i),'.csv',sep = ''))
 }
-
-fwrite(Rm,'~/Research/K_cluster_series/rb/Rm.csv')
-fwrite(Km,'~/Research/K_cluster_series/rb/Km.csv')
-fwrite(Rdm,'~/Research/K_cluster_series/rb/Rdm.csv')
-fwrite(Kdm,'~/Research/K_cluster_series/rb/Kdm.csv')
-fwrite(Rddm,'~/Research/K_cluster_series/rb/Rddm.csv')
-##fwrite(Rm,'~/scratch/Rcode/rb/Rm.csv')
-##fwrite(Km,'~/scratch/Rcode/rb/Km.csv')
-##fwrite(Rdm,'~/scratch/Rcode/rb/Rdm.csv')
-##fwrite(Kdm,'~/scratch/Rcode/rb/Kdm.csv')
-##fwrite(Rddm,'~/scratch/Rcode/rb/Rddm.csv')
 
 
 # Den + Rad + Rad Blur ----------------------------------------------------
