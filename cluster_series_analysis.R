@@ -754,7 +754,7 @@ for(i in 1:n){
   ##fwrite(csepexp,paste('~/scratch/Rcode/rb/csep',toString(i),'.csv',sep = ''))
 }
 
-# Binomial Radius Blur ----------------------------------------------------
+# Bimodal Radius Blur ----------------------------------------------------
 
 # Two different radii with different proportions series
 rm(list=ls())
@@ -1022,4 +1022,114 @@ for(i in 1:(n*m*o)){
   ##fwrite(csepexp,paste('~/scratch/Rcode/denrb/csep',toString(i),'.csv',sep = ''))
 }
 
+
+
+# Cluster Radius with Poisson Background ----------------------------------
+rm(list=ls())
+# see how the K-function changes
+under.nums <- seq(2,102,1)
+under.nums[length(under.nums)] <- 1
+over.nums <- seq(1,101,1)
+
+set.seed(10)
+
+cluster.size <- c(60,60,60)
+
+# detector efficiency series values
+r <- list(1, 2, 3, 4, 5, 8)
+n <- length(r)
+
+Rm <- matrix(0,101,n)
+Km <- matrix(0,101,n)
+Rdm <- matrix(0,101,n)
+Kdm <- matrix(0,101,n)
+Rddm <- matrix(0,101,n)
+
+csep <- list()
+for(i in 1:n){
+  csep[[i]] <- list()
+}
+
+toSub <- fread('~/Research/K_cluster_series/cubetoSub.csv',drop=1)
+env.r <- fread('~/Research/K_cluster_series/cube.csv',select=2)
+##toSub <- fread('~/scratch/Rcode/cubetoSub.csv',drop=1)
+##env.r <- fread('~/scratch/Rcode/cube.csv',select=2)
+
+p <- length(under.nums)
+p <- 3
+
+#loop
+for(i in(1:p)){
+  #upload
+  over <- read.rcp(paste('~/Research/point_patterns/Final/FinalConfig',toString(over.nums[i]),sep=""),paste('~/Research/point_patterns/Final/system',toString(over.nums[i]),sep=""),scaleUp = TRUE,newRadius = 0.5)
+  ##over <- read.rcp(paste('~/scratch/Rcode/FinalConfigs/FinalConfig',toString(over.nums[i]),sep=""),paste('~/scratch/Rcode/systems/system',toString(over.nums[i]),sep=""),scaleUp = TRUE,newRadius = 0.5)
+  
+  under.big <- rpoispp3(1.028883, domain = box3(c(0,60),c(0,60),c(0,60)),nsim = 1,drop = TRUE)
+  over.big <- stitch.size(over, boxSize = c(60,60,60))
+  
+  #test on different radius values below here
+  for(j in 1:n){
+    #make cluster
+    cluster <- makecluster(under.big,over.big,0.5,0.5,type="cr",speed="superfast",cr=r[[j]])
+    
+    #test
+    result <- anomK3est(cluster[[1]],toSub,max(env.r),nrow(env.r),correction="trans")
+    rvals <- result$r
+    tvals <- result$trans
+    
+    # get out that peak info son
+    #plot(rvals,tvals,type = "n",xlab = "", ylab = "")
+    rvals.new <- rvals[13:length(rvals)]
+    tvals.new <- tvals[13:length(rvals)]
+    
+    #get those metrics out
+    metrics <- k3metrics(rvals.new, tvals.new, FALSE)
+    
+    Km[i,j] <- metrics[[1]]
+    Rm[i,j] <- metrics[[2]]
+    Rdm[i,j] <- metrics[[3]]
+    Rddm[i,j] <- metrics[[4]]
+    Kdm[i,j] <- metrics[[5]]
+    
+    csep[[j]][[i]] <- cluster[[4]]
+    
+    print(paste(toString(i),"_",toString(j)))
+    rm(cluster, result, rvals, tvals, rvals.new, tvals.new)
+    gc()
+  }
+  #clear memory
+  rm(over,under.big,over.big)
+  gc()
+  #repeat
+}
+
+
+Rm <- as.data.frame(Rm)
+Km <- as.data.frame(Km)
+Rdm <- as.data.frame(Rdm)
+Kdm <- as.data.frame(Kdm)
+Rddm <- as.data.frame(Rddm)
+
+fwrite(Rm,'~/Research/K_cluster_series/radp/Rm.csv')
+fwrite(Km,'~/Research/K_cluster_series/radp/Km.csv')
+fwrite(Rdm,'~/Research/K_cluster_series/radp/Rdm.csv')
+fwrite(Kdm,'~/Research/K_cluster_series/radp/Kdm.csv')
+fwrite(Rddm,'~/Research/K_cluster_series/radp/Rddm.csv')
+##fwrite(Rm,'~/scratch/Rcode/radp/Rm.csv')
+##fwrite(Km,'~/scratch/Rcode/radp/Km.csv')
+##fwrite(Rdm,'~/scratch/Rcode/radp/Rdm.csv')
+##fwrite(Kdm,'~/scratch/Rcode/radp/Kdm.csv')
+##fwrite(Rddm,'~/scratch/Rcode/radp/Rddm.csv')
+
+maxnc <- sapply(csep, function(x){max(sapply(x, length))})
+for(i in 1:n){
+  csepexp <- matrix(NA,p,maxnc[[i]])
+  for(j in 1:p){
+    csepexp[j,(1:length(csep[[i]][[j]]))] <- csep[[i]][[j]]
+  }
+  csepexp <- as.data.frame(csepexp)
+  fwrite(csepexp,paste('~/Research/K_cluster_series/radp/csep',toString(i),'.csv',sep = ''))
+  
+  ##fwrite(csepexp,paste('~/scratch/Rcode/radp/csep',toString(i),'.csv',sep = ''))
+}
 

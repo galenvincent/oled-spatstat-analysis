@@ -143,6 +143,7 @@ for(i in 1:4){
 
 # radius analysis
 rm(list=ls())
+gc()
 
 de <- list()
 de$vals <- list()
@@ -150,11 +151,11 @@ de$mean <- list()
 de$sd <- list()
 de$eff <- c(1,2,3,4,5,8)
 
-de$vals$Km <- fread("~/Research/K_cluster_series/181029_rad/Km.csv")
-de$vals$Rm <- fread("~/Research/K_cluster_series/181029_rad/Rm.csv")
-#de$vals$Kdm <- fread("~/Research/K_cluster_series/181029_rad/Kdm.csv")
-de$vals$Rdm <- fread("~/Research/K_cluster_series/181029_rad/Rdm.csv")
-de$vals$Rddm <- fread("~/Research/K_cluster_series/181029_rad/Rddm.csv")
+de$vals$Km <- fread("~/Research/K_cluster_series/190211_rad/Km.csv")
+de$vals$Rm <- fread("~/Research/K_cluster_series/190211_rad/Rm.csv")
+#de$vals$Kdm <- fread("~/Research/K_cluster_series/190211_rad/Kdm.csv")
+de$vals$Rdm <- fread("~/Research/K_cluster_series/190211_rad/Rdm.csv")
+de$vals$Rddm <- fread("~/Research/K_cluster_series/190211_rad/Rddm.csv")
 
 # Lets look at the mean and SDs of the matrices
 de$mean <- lapply(de$vals, apply, 2, mean, na.rm=TRUE)
@@ -705,10 +706,10 @@ for(i in 1:4){
   }
 }
 
-de$vals$Km <- fread("~/Research/K_cluster_series/190124_denrb/Km.csv")
-de$vals$Rm <- fread("~/Research/K_cluster_series/190124_denrb/Rm.csv")
-de$vals$Rdm <- fread("~/Research/K_cluster_series/190124_denrb/Rdm.csv")
-de$vals$Rddm <- fread("~/Research/K_cluster_series/190124_denrb/Rddm.csv")
+de$vals$Km <- fread("~/Research/K_cluster_series/190206_denrb/Km.csv")
+de$vals$Rm <- fread("~/Research/K_cluster_series/190206_denrb/Rm.csv")
+de$vals$Rdm <- fread("~/Research/K_cluster_series/190206_denrb/Rdm.csv")
+de$vals$Rddm <- fread("~/Research/K_cluster_series/190206_denrb/Rddm.csv")
 
 #de$vals$csep <- fread("~/Research/K_cluster_series/181105_denr/csep.csv")
 
@@ -796,7 +797,7 @@ de$mean$avgs <- list()
 de$sd$avgs <- list()
 for(i in 1:4){
   de$mean$avgs[[i]] <- lapply(de$mean$mat[[i]], apply, 2, mean)
-  de$sd$avgs <- lapply(de$sd$mat[[i]], apply, 2, mean)
+  de$sd$avgs <- lapply(de$sd$mat[[i]], apply, 2, function(x){sqrt(x[1]^2 + x[2]^2 + x[3]^2 + x[4]^2)})
 }
 
 #plot them 
@@ -826,6 +827,9 @@ for(i in 1:4){
 
 
 # Plot by WEIGHTED RADIUS
+x <- rep(0,4^3)
+y <- rep(0,4^3)
+cnt <- 1
 color = c("red","darkorange","darkgreen","blue")
 par(mfrow = c(2,2),mgp = c(2.5,1,0),mar = c(3.5,5,2,0.75))
 for(k in 1:4){
@@ -836,6 +840,11 @@ for(k in 1:4){
          cex.lab = 1.75, cex.axis = 1.25)
     
     for(j in c(1,2,3,4)){
+      if(i == 2){
+        x[cnt:(cnt+3)] <- avgvol.r[,k]
+        y[cnt:(cnt+3)] <- de$mean$mat[[i]][[k]][j,]
+        cnt <- cnt + 4
+      }
       points(avgvol.r[,k], de$mean$mat[[i]][[k]][j,],pch= 19,col=color[j])
       lines(avgvol.r[,k], de$mean$mat[[i]][[k]][j,],col=color[j])
       arrows(avgvol.r[,k][de$sd$mat[[i]][[k]][j,] != 0], de$mean$mat[[i]][[k]][j,][de$sd$mat[[i]][[k]][j,] != 0]-de$sd$mat[[i]][[k]][j,][de$sd$mat[[i]][[k]][j,] != 0], 
@@ -852,6 +861,8 @@ for(k in 1:4){
     }
   }
 }
+# Fit linear relationship in Rm:
+rmlm <- lm(y~x)
 
 #Plot averaged across density vs average radius
 par(mfrow = c(2,2),mgp = c(2.5,1,0),mar = c(3.5,5,2,0.75))
@@ -861,18 +872,22 @@ for(i in 1:4){
        pch=19, xlab="Weighted Radius", ylab=ylabs[i],type = "n",
        cex.lab = 1.75, cex.axis = 1.25)
   if(i == 1){
-    legend(2.75,17,legend = c("0","0.2","0.4","0.6"), col = color, pch = 19, lwd = 1.3,bty = "n",cex = 1.4,y.intersp= 0.9)
-    text(2,18,"Radius Blur SD Fraction",pos = 4,cex = 1.4)
+    legend(2.75,24,legend = c("0","0.2","0.4","0.6"), col = color, pch = 19, lwd = 1.3,bty = "n",cex = 1.4,y.intersp= 0.9)
+    text(2,25,"Radius Blur SD Fraction",pos = 4,cex = 1.4)
     next
   }
   for(j in c(1,2,3,4)){
     points(avgvol.r[,j], de$mean$avgs[[i]][[j]],pch= 19,col=color[j])
     lines(avgvol.r[,j], de$mean$avgs[[i]][[j]],col=color[j])
+    arrows(avgvol.r[,j], de$mean$avgs[[i]][[j]] - de$sd$avgs[[i]][[j]], 
+           avgvol.r[,j], de$mean$avgs[[i]][[j]] + de$sd$avgs[[i]][[j]], 
+           length=0.05, angle=90, code=3,col=color[j])
   }
   if(i == 4){
     mtext("Averaged Over Cluster Density", side = 3, outer = TRUE, line = -1.5, cex = 1.25)
   }
 }
+
 
 #Now focus on just Kmax (to find density)
 par(mfrow = c(1,1), mar = c(4,5,2,1))
