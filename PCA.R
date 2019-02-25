@@ -11,7 +11,7 @@ ggbiplot(mtcars.pca)
 
 library(data.table)
 
-data <- fread("~/Research/PCA/pca.csv")
+data <- fread("~/Research/PCA/190216_pca.csv")
 rsm <- sample(1:10000, replace = FALSE)
 data.test <- data[rsm[1:1000],]
 data.train <- data[rsm[1001:10000],]
