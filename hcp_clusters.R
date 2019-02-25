@@ -20,6 +20,7 @@ plot(a,xlim=c(0,11))
 a.df <- as.data.frame(cbind(a$r,a$trans))
 
 # HCP cluster with RCP underneath
+
 hcp.vol <- box3(c(0,60),c(0,60),c(0,60))
 cluster <- hcpcluster(6,3,0.5,0.03,hcp.vol,'rcp',c("~/Research/point_patterns/Final/FinalConfig1","~/Research/point_patterns/Final/system1"))
 #plot3d.pp3(cluster[[1]])
@@ -32,15 +33,16 @@ a.df <- as.data.frame(cbind(a$r,a$trans))
 fwrite(a.df,"hcpclust_rcp_csep_r6-R3-s105-s2003.csv")
 
 # get the 50,000 RCP RRL ready to plot in mathematica 
-toSub <- fread('~/Research/K_cluster_series/cubetoSub.csv',drop=1)
-env.r <- fread('~/Research/K_cluster_series/cube.csv',select=2)
-sim.r <- c(0, 11/19, 22/19, 33/19, 44/19, 55/19, 66/19, 77/19, 88/19, 99/19, 
-110/19, 121/19, 132/19, 143/19, 154/19, 165/19, 176/19, 187/19, 
-198/19, 11)
+toSub <- fread('~/Research/numeric_k_model/cubetoSub_r11.csv',drop=1)
+env.r <- fread('~/Research/numeric_k_model/cube_r11.csv',select=2)
+sim.r <- seq(0,11,len = 30)
 
-toSub.new <- rep(0,20)
+toSub.new <- rep(0,30)
+toSub.r <- rep(0,30)
 
-for(i in 1:20){
+for(i in 1:30){
+  toSub.r[i] <- env.r$V1[which(abs(env.r - sim.r[i]) == min(abs(env.r - sim.r[i])))]
   toSub.new[i] <- toSub$x[which(abs(env.r - sim.r[i]) == min(abs(env.r - sim.r[i])))]
 }
-fwrite(as.data.frame(toSub.new),"analyticModel_toSub.csv")
+fwrite(as.data.frame(toSub.new),"~/Research/numeric_k_model/analyticModel_toSub.csv")
+fwrite(as.data.frame(toSub.r),"~/Research/numeric_k_model/analyticModel_toSub_r.csv")
