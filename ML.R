@@ -10,7 +10,10 @@ names(dep) <- c("r","den","rb","gb")
 met <- fread("~/Research/PCA/190216_pca.csv",select = c(5:9))
 names(met) <- c("Km","Rm","Rdm","Rddm","Kdm")
 
-data <- data.frame(met, dep)
+data.pca <- prcomp(met, center = TRUE, scale. = TRUE)
+data.pca.vals <- as.data.frame(data.pca$x, names = c("PC1","PC2","PC3","PC4","PC5"))
+
+data <- data.frame(met, dep, data.pca.vals)
 
 data$rw <- (data$r^4 + 6* (data$r^2) *(data$rb * data$r)^2 + 3 *(data$rb * data$r)^4)/(data$r^3 + 3*data$r*(data$rb * data$r)^2)
 data$sigma <- data$rb * data$r
@@ -22,8 +25,9 @@ trainSet <- data[samp,]
 testSet <- data[-samp,] 
 
 
-out <- 'den'
-predictors <- c("Km","Rm","Rdm","Rddm","Kdm")
+out <- 'sigma'
+#predictors <- c("Km","Rm","Rdm","Rddm","Kdm")
+predictors <- c("PC1","PC2","PC3","PC4","PC5")
 
 models <- list()
 
@@ -62,7 +66,7 @@ lapply(comp, function(x){
   ds <- defaultSummary(x)
   
   plot(x$obs, x$pred, main = toString(x$model[1]), xlab = "Actual Value", ylab = "Predicted Value")
-  abline(0,1, col = "red", lwd = 2)
+  abline(0,1, col = "red", lwd = 1.25)
   return(ds)
 })
 
@@ -70,23 +74,3 @@ lapply(comp, function(x){
 plot(varImp(models[[1]]))
 plot(varImp(models[[2]]))
 plot(varImp(models[[3]]))
-
-
-
-mods <- resamples(list(lm = lm1, enet = enet1))
-summary(mods)
-
-compare_models(enet1, lm1)
-
-# Based on PCA
-train.pca <- prcomp(trainSet[,predictors], center = TRUE, scale. = TRUE)
-
-train.data <- train.pca$x[,1:2]
-
-lm2 <- train(train.data,trainSet[,out], method = "lm")
-nn2 <- train(train.data,trainSet[,out], method = "nnet")
-
-td <- predict(train.pca, newdata = testSet[,predictors])
-
-lmpred <- predict.train(object = lm2, td[,1:2], type = "raw")
-nnpred <- predict.train(object = nn2, td[,1:2], type = "raw")
