@@ -38,7 +38,7 @@ for(i in 2:4){
 legend(0,-10,legend = c("R = 1", "R = 3", "R = 5", "R = 7"), col = cols, lwd = rep(2,4), cex = 1.3)
 
 #test
-result <- anomK3est(cluster[[1]],toSub,max(env.r),nrow(env.r),correction="trans")
+result <- anomK3est(cluster[[2]][[1]],toSub,max(env.r),nrow(env.r),correction="trans")
 rvals <- result$r
 tvals <- result$trans
 
@@ -79,14 +79,15 @@ peak.info$ddderivsm <- argmax(rvals.new, peak.info$ddderiv, w = 3, span = span)
 
 Rddm_ind <- peak.info$ddderivsm$i[peak.info$ddderivsm$i > peak.info$i[1] & peak.info$ddderivsm$i < peak.info$derivsm$i[1]]
 #points(rvals.new[Rddm_ind],peak.info$ddderiv[Rddm_ind], col="green", cex = 2, pch = 19)
-par(mgp=c(2,1,0))
-plot(rvals,tvals,type = 'n',xlim = c(0,16),xlab = "r",
+par(mfrow = c(1,1), mar=c(3.5,4,2,1), mgp=c(2,1,0))
+plot(rvals,tvals,type = 'n',xlim = c(1,11),xlab = "r",
      ylab = expression(sqrt('K'[3]*'(r)')*'  Anomaly'),
      cex.lab = 1.75, cex.axis = 1.25)
 lines(rvals.new, peak.info$y.hat,col="black",lwd = 2)
 lines(rvals.new, -peak.info$derivsm$y.hat, col = "red", lwd = 2)
 lines(rvals.new, peak.info$dderivsm$y.hat, col = "purple", lwd = 2)
 lines(rvals.new, peak.info$ddderivsm$y.hat, col = "blue", lwd = 2)
+legend(8.25,23, c("K","K'","K''","K'''"), col = c("black","red","purple","blue"), lty = 1, lwd = 2, bty = "n", cex = 1.5, y.intersp = 1.35)
   
 
 # Detector Efficiency -----------------------------------------------------

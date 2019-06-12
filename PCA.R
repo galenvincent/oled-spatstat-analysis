@@ -13,7 +13,7 @@ ggbiplot(mtcars.pca)
 
 library(data.table)
 
-data <- fread("~/Research/PCA/190216_pca.csv")
+data <- fread("~/Research/ML/190216_pca.csv", select = c(5:9))
 rsm <- sample(1:10000, replace = FALSE)
 data.test <- data[rsm[1:1000],]
 data.train <- data[rsm[1:10000],]
@@ -21,9 +21,9 @@ data.train <- data[rsm[1:10000],]
 data.train.pred <- data.train[,5:9]
 
 colnames(data.train.pred) <- c("Km","Rm","Rdm","Rddm","Kdm")
-data.pca <- prcomp(data.train.pred, center = TRUE, scale. = TRUE)
+data.pca <- prcomp(data, center = TRUE, scale. = TRUE)
 summary(data.pca)
-ggbiplot(data.pca, labels = NA)
+ggbiplot(data.pca)
 
 data.pca$rotation
 

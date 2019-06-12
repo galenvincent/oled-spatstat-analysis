@@ -21,16 +21,45 @@ a.df <- as.data.frame(cbind(a$r,a$trans))
 
 # HCP cluster with RCP underneath
 
+under.nums <- seq(2,102,1)
+under.nums[length(under.nums)] <- 1
+over.nums <- seq(1,101,1)
+
 hcp.vol <- box3(c(0,60),c(0,60),c(0,60))
-cluster <- hcpcluster(6,3,0.5,0.03,hcp.vol,'rcp',c("~/Research/point_patterns/Final/FinalConfig1","~/Research/point_patterns/Final/system1"))
-#plot3d.pp3(cluster[[1]])
-cluster[[2]]
 
-a <- K3est(cluster[[1]],rmax = 11,nrval = 300, correction = "translation")
-#plot(a,xlim=c(0,11))
-a.df <- as.data.frame(cbind(a$r,a$trans))
+envout <- matrix(NA, nrow = 300, ncol = 102)
 
-fwrite(a.df,"hcpclust_rcp_csep_r6-R3-s105-s2003.csv")
+for(i in 1:101){
+  print(i)
+  fp <- c(paste('~/Research/point_patterns/Final/FinalConfig',toString(under.nums[i]),sep=""),paste('~/Research/point_patterns/Final/system',toString(under.nums[i]),sep=""))
+  cluster <- hcpcluster(6,3,0.5,0.03,hcp.vol,'rcp',fp)
+  #plot3d.pp3(cluster[[1]])
+  #cluster[[2]]
+  
+  a <- K3est(cluster[[1]],rmax = 11,nrval = 300, correction = "translation")
+  if(i == 1){
+    envout[,i] <- a$r
+  }
+  envout[,i+1] <- a$trans
+}
+
+envout.vals <- envout[,2:102]
+envout.sorted <- t(apply(envout.vals, 1, sort))
+
+perc <- 0.95
+envibig <- ceiling((1-((1-perc)/2))*100)
+envismall <- floor(((1-perc)/2)*100)
+
+env.toplot <- cbind(envout[,1],envout.sorted[,envismall],envout.sorted[,envibig])
+
+View(env.toplot)
+
+a.df <- as.data.frame(env.toplot)
+
+fwrite(a.df,"hcpclust_rcp_env_csep_r6-R3-s105-s2003.csv")
+
+
+
 
 # get the 50,000 RCP RRL ready to plot in mathematica 
 toSub <- fread('~/Research/numeric_k_model/cubetoSub_r11.csv',drop=1)

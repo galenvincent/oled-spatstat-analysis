@@ -232,7 +232,7 @@ color[1:5] <- color[6:10]
 color[6:10] <- temp
 
 xlim = c(0,max(rvals))
-ylim = c(-16,16)
+ylim = c(-15,15)
 titles = c("15x15x15",
            "20x20x20",
            "30x30x30",
@@ -244,8 +244,16 @@ titles = c("15x15x15",
            "30x60x60",
            "40x60x60")
 
-par(mfrow=c(2,2),mar=c(3.5,4.25,2,1),mgp = c(2,1,0))#,mar = c(3.5,3.5,3.5,2.5))
-for (i in 2:5){
+cb <- brewer.pal(6,"Paired")
+color[2] <- cb[2]
+color[4] <- cb[4]
+color[5] <- cb[6]
+color[8] <- cb[1]
+color[9] <- cb[3]
+color[10] <- cb[5]
+
+par(mfcol=c(3,2),mar=c(3.5,4.25,2,1),mgp = c(2,1,0))#,mar = c(3.5,3.5,3.5,2.5))
+for (i in c(2, 4, 5, 8, 10)){
   plot(rvals[,1],env.plot.big[,1],type="n",main=titles[i],
        xlab="r",ylab=expression(sqrt('K'[3]*'(r)')*'  Anomaly'),
        ylim=ylim,xlim=xlim,
@@ -262,12 +270,15 @@ for (i in 2:5){
   #                   ", ",toString(round(peak.small.vals[2,i],2)),
   #                   ", ",toString(round(peak.size[2,i],2)),")"),pos=4)
     if(i == 2){
-    text(15,14,"Random: 99.9% AI",pos=4,cex = 1.25)
-    text(15,10.5,"Clusters: 95% AI",pos=4,cex = 1.25)
-    text(30,7,"100% Den",pos=4,cex = 1.25)
-    text(30,4,"R = 3",pos=4,cex = 1.25)
+    # text(15,14,"Random: 99.9% AI",pos=4,cex = 1.25)
+    # text(15,10.5,"Clusters: 95% AI",pos=4,cex = 1.25)
+    # text(30,7,"100% Den",pos=4,cex = 1.25)
+    # text(30,4,"R = 3",pos=4,cex = 1.25)
     #text(15,-7,"(r, amplitude, spread)",pos=4)
+    
+    #legend(20,14,c("Random - 99.9% AI", "Clusters - 95% AI"), col = c(color[2],"black"), lty = c(1,1,1), lwd = c(10,2), bty = "n")
     }
+  legend(-2,-6,c("Random - 99.9% AI", "Clusters - 95% AI"), col = c(color[i],"black"), lty = c(1,1,1), lwd = c(10,2), bty = "n", cex = 1.1, y.intersp = 0.75)
   # if(i == 7){
   #   text(-0.5,15,"Random: 99.9% AI",pos=4)
   #   text(0,-10,"Clusters: 95% AI",pos=4)
@@ -276,6 +287,7 @@ for (i in 2:5){
   #   #text(15,-7,"(r, amplitude, spread)",pos=4)
   # }
 }
+
 
 #### radii at fixed envelope width
 widths <- c(1)
