@@ -86,26 +86,33 @@ warm.map.scaled <- warm.map
 warm.map.scaled$estimate <- warm.map$estimate * normfactor.w
 
 # for visualizations, create KDE objects (note, only works on grid)
-est.toplot <- est.warm.real
-kint <- 10
-cont <- quantile(est.toplot$lambda.est[,kint], probs = seq(0.01, 0.99, by = 0.01))
-cont <- rev(cont)
-imap3d.est <- list(x = est.toplot$x,
-                   eval.points = list(sort(unique(est.toplot$estimate.coords$x)), sort(unique(est.toplot$estimate.coords$y)), sort(unique(est.toplot$estimate.coords$z))),
-                   estimate = array(est.toplot$lambda.est[,kint], dim = c(grid.size,grid.size,grid.size)),
-                   H = NULL,
-                   gridtype = 'linear',
-                   gridded = TRUE,
-                   binned = TRUE,
-                   names = c("x","y","z"),
-                   w = rep(1, nrow(est.toplot$x)),
-                   cont = cont)
-class(imap3d.est) <- 'kde'
 
-open3d()
-plot(imap3d.est, cont = c(20), alphavec = c(0.25), colors = c('red'), main = paste("nn",toString(k[kint]),sep = ""))
-open3d()
-plot(cold.map, cont = c(20), alphavec = c(0.25), colors = c('blue'))
+contourplot <- function(estimate, kind, new = FALSE, ...){
+  est.toplot <- estimate
+  cont <- quantile(est.toplot$lambda.est[,kind], probs = seq(0.01, 0.99, by = 0.01))
+  cont <- rev(cont)
+  grid.size <- round(length(est.toplot$estimate.coords$x)^(1/3), 0)
+  imap3d.est <- list(x = est.toplot$x,
+                     eval.points = list(sort(unique(est.toplot$estimate.coords$x)), sort(unique(est.toplot$estimate.coords$y)), sort(unique(est.toplot$estimate.coords$z))),
+                     estimate = array(est.toplot$lambda.est[,kind], dim = c(grid.size,grid.size,grid.size)),
+                     H = NULL,
+                     gridtype = 'linear',
+                     gridded = TRUE,
+                     binned = TRUE,
+                     names = c("x","y","z"),
+                     w = rep(1, nrow(est.toplot$x)),
+                     cont = cont)
+  class(imap3d.est) <- 'kde'
+  if(new == TRUE){
+    open3d()
+  }
+  plot(imap3d.est, ...)
+}
+
+kind <- 20
+cont <- 15
+contourplot(est.cold, kind, cont = c(cont), alphavec = c(0.3), colors = c('blue'), main = paste("nn",toString(k[kind]),sep = ""))
+contourplot(est.warm, kind, new = TRUE, cont = c(cont), alphavec = c(0.3), colors = c('red'), main = paste("nn",toString(k[kind]),sep = ""))
 
 # now we need to go through and check the performance at different values of k
 actual.cold <- as.vector(cold.map.scaled$estimate)
@@ -137,15 +144,17 @@ den_cold <- npoints(ir.cold)/volume(domain(ir.cold))
 
 est.warm.real$lambda.est <- est.warm.real$lambda.est * den_cold/den_warm
 
+est.warm$lambda.est <- est.warm$lambda.est * den_cold/den_warm
+
 # choose pattern to analyze
-est.hist <- est.sim1
+est.hist <- est.warm
 
 #linear scale
 e.h <- data.frame(est = unlist(est.hist$lambda.est), k = rep(k, each = nrow(est.hist$lambda.est)))
 max(e.h$est)
 min(e.h$est)
 est_min <- 0
-est_max <- 0.5
+est_max <- 0.0007
 est_by <- (est_max-est_min)/100
 est_c <- cut(e.h$est, seq(est_min,est_max, est_by))
 k_c <- cut(e.h$k, seq(min(k)-0.5,max(k)+0.5+kby, kby))
@@ -156,21 +165,26 @@ z.df <- as.data.frame(z)
 area <- est_by*kby
 tot <- area * sum(z.df$Freq)
 
+#log on the color scale if you want (don't normalize if you do this)
+z <- log(z)
+z[z == -Inf] = 0
+
 xb <- seq(est_min + 0.5*est_by, est_max - 0.5*est_by, est_by)
 yb <- k
 
+par(mar = c(5,4.5,2,4))
+image2D(x = xb, y = yb, z = z, xlab = "estimate", ylab = "k", xlim = c(est_min, est_max), clab = "log(freq)",zlim = c(0,9))
+
 open3d()
 hist3Drgl(x = xb, y = yb, z = z/tot, xlab = "estimate", ylab = "k", zlab = "frequency", axes = TRUE, label = TRUE, nticks = 5, ticktype = "detailed")
-par(mar = c(5,4.5,2,4))
-image2D(x = xb, y = yb, z = z/tot, xlab = "estimate", ylab = "k", xlim = c(est_min, est_max))
 
 # Log scale
 e.h <- data.frame(est = log(unlist(est.hist$lambda.est)), k = rep(k, each = nrow(est.hist$lambda.est)))
 e.h$est[is.nan(e.h$est)] <- mean(e.h$est, na.rm = TRUE)
 max(e.h$est)
 min(e.h$est)
-est_min <- -3.5
-est_max <- -1
+est_min <- -9.5
+est_max <- -8
 est_by <- (est_max-est_min)/100
 est_c <- cut(e.h$est, seq(est_min,est_max, est_by))
 k_c <- cut(e.h$k, seq(min(k)-0.5,max(k)+0.5+kby, kby))
@@ -184,19 +198,29 @@ tot <- area * sum(z.df$Freq)
 xb <- seq(est_min + 0.5*est_by, est_max - 0.5*est_by, est_by)
 yb <- k
 
+par(mar = c(5,4.5,2,4))
+image2D(x = xb, y = yb, z = z/tot, xlab = "log(estimate)", ylab = "k", xlim = c(est_min,est_max), zlim = c(0,0.02))
+
 open3d()
 hist3Drgl(x = xb, y = yb, z = z/tot, 
           xlab = "log(estimate)", ylab = "k", zlab = "frequency", border = "black", axes = TRUE, label = TRUE, nticks = 5, ticktype = "detailed")
-par(mar = c(5,4.5,2,4))
-image2D(x = xb, y = yb, z = z/tot, xlab = "log(estimate)", ylab = "k", xlim = c(est_min,est_max))
 
-# global intensity removal for the actual data
-grid.size <- 10
+
+### global intensity removal for the actual data ###
+grid.size <- 30
 kby <- 5
-k <- seq(20,100, kby)
-est.cold <- nncrossden.pp3(ir.cold, sup.cold, k = 10, grid.size, grid.size, grid.size, at.points = FALSE)
-est.warm <- nncrossden.pp3(ir.warm, sup.warm, k = 10, grid.size, grid.size, grid.size, at.points = FALSE)
+k <- seq(5,15, kby)
+est.cold <- nncrossden.pp3(ir.cold, sup.cold, k, grid.size, grid.size, grid.size, at.points = FALSE, nsplit = 8*5, os = "windows")
+est.warm <- nncrossden.pp3(ir.warm, sup.warm, k = 10, grid.size, grid.size, grid.size, at.points = FALSE, os = "windows")
 
 hist(est.cold[[1]]$nn10, breaks = seq(0,0.0005,length.out = 100), ylim = c(0,70))
 hist(est.warm[[1]]$nn10, breaks = seq(0,0.0005,length.out = 100), ylim = c(0,70))
+
+# visualize this^ data run on the HPC
+load("C:/Users/galen/Documents/Research/local_intensity_estimate/est.cold.full.RData")
+load("C:/Users/galen/Documents/Research/local_intensity_estimate/est.warm.full.RData")
+k <- est.cold$k
+kby <- k[2]-k[1]
+
+
 

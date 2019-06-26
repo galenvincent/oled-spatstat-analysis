@@ -3,6 +3,7 @@ library(data.table)
 library(rapt)
 library(RColorBrewer)
 library(pracma)
+library(scales)
 
 percentile <- .999
 plot.big <- matrix(NaN,200,10)
@@ -48,7 +49,7 @@ plot(rvals[,1],plot.big[,1],type="n",main="99.9% AI Envelopes vs Box Size",
      xlab="r",ylab=expression(sqrt('K'[3]*'(r)')*'  Anomaly'),
      ylim=ylim,xlim=xlim,
      cex.lab = 1.75,cex.main = 1.75,cex.axis = 1.25)
-for(i in 5:10){
+for(i in 6:10){
   lines(rvals[,i],plot.big[,i],col=color[i],lwd = 2)
   lines(rvals[,i],plot.small[,i],col=color[i],lwd = 2)
 }
@@ -67,20 +68,77 @@ legend(-1,11, legend=c("10x60x60",
                        "60x60x60"),
        col=c(color[6:10],color[5]),lty=rep(1,6),lwd=rep(2,6),bty="n",cex = 1.25)
 
+
+#make plots for paper - make sure to run the stuff above
+#envelopes
+newcolors <- c(color[1], color[2], color[3], color[4], color[1], "red")
+
+par(mgp = c(2.5,1,0),mar = c(4,4.5,3.5,2.5))
+plot(rvals[,1], plot.big[,1], type="n", main="99.9% AI Envelopes vs Box Size",
+     xlab="r (nm)", ylab=expression(sqrt('K'[3]*'(r)')*'  Anomaly'),
+     ylim=c(-7.25,7.25), xlim=xlim,
+     cex.lab = 1.75, cex.main = 1.75, cex.axis = 1.25)
+for(i in c(2, 4, 5)){
+  a <- c(rvals[,i], rev(rvals[,i]))
+  b <- c(plot.big[,i], rev(plot.small[,i]))
+  polygon(a, b, col=alpha(newcolors[i], 0.85), border="black", lwd=1.5)
+}
+lines(rvals[,9], plot.big[,9], col = newcolors[6], lwd = 2, lty = 2)
+lines(rvals[,9], plot.small[,9], col = newcolors[6], lwd = 2, lty = 2)
+
+abline(h=0,lty=2,lwd=1,col="black")
+
+legend(-1,8.3, legend = c("20x20x20 nm",
+                      "40x40x40 nm",
+                      "60x60x60 nm"),
+       col=c(newcolors[c(2, 4, 5)]), lty=c(1, 1, 1), lwd = c(15, 15, 15), bty="n", cex = 1.25)
+legend(-1,-5, legend = "30x60x60 nm", col = newcolors[6], lty = 2, lwd = 2, bty = "n", cex = 1.25)
+
+#envelope width as f_n of box size
+rs <- c(7)
+widths <- matrix(NaN,length(rs),ncol(plot.big))
+
+for(j in (1:length(rs))){
+  for(i in (1:ncol(plot.big))){
+    rind <- which(abs(rs[j]-rvals[,i]) == min(abs(rs[j]-rvals[,i])))
+    widths[j,i] <- plot.big[rind,i] #- plot.small[rind,i]
+  }
+}
+
+x1 <- c(15,20,30,40,60)
+
+par(mfrow = c(1,1),mar = c(4,4,4,4), mgp = c(2.7,1,0))
+plot(x1,widths[,1:5], ylim = c(0,max(widths[,1:5])),
+     pch = 16, col="blue",
+     xlab = expression(paste('Cube Volume (nm'^'3'*')')),ylab = "Envelope Width",
+     main = "Cubic Volumes", cex = 1.5, cex.lab = 1.5, cex.axis = 1.5)
+
+mdl <- lm(widths[,1:5] ~ I(x1^(-3/2)))
+
+x <- seq(0, 60^3, 1)
+y <- predict(mdl, newdata = data.frame(x1 = x))
+
+lines(x, y, col = "black", lty = 2, lwd = 2)
+
+
 #### Cluster only #### 
 rm(list=ls())
-percentile <- .95
+gc()
+
+percentile <- .90
 plot.big <- matrix(NaN,200,10)
 plot.small <- matrix(NaN,200,10)
 plot.toSub <- matrix(NaN,200,10)
 
 rvals <- matrix(NaN,200,10)
 
+n <- 523
+
 for(i in (1:10)){
-  rtemp <- fread(paste('~/Research/box_size_effect/density_1/result',toString(i),'_',toString(1),'.csv',sep=""),select=1) # r values
-  tvals <- matrix(NaN,200,101)
-  for(j in (1:101)){
-    tvals[,j] <- fread(paste('~/Research/box_size_effect/density_1/result',toString(i),'_',toString(j),'.csv',sep=""),select=2)$trans # results 
+  rtemp <- fread(paste('~/Research/box_size_effect/190624_density_0.5/result',toString(1),'_',toString(i),'.csv',sep=""),select=1) # r values
+  tvals <- matrix(NaN,200,n)
+  for(j in (1:n)){
+    tvals[,j] <- fread(paste('~/Research/box_size_effect/190624_density_0.5/result',toString(j),'_',toString(i),'.csv',sep=""),select=2)$trans # results 
   }
   nTests <- ncol(tvals) # number of tests done
   prange <- percentile*nTests # get the range of indeces for which each percentile spans
@@ -95,7 +153,7 @@ for(i in (1:10)){
   plot.toSub[,i] <- sortedtVals[,round(nTests/2)]
   rvals[,i] <- as.numeric(rtemp$r)
   
-  rm(rtemp,tvals,nTests,prange,sortedtVals,ind.big,ind.small)
+  rm(rtemp, tvals, nTests, prange, sortedtVals, ind.big, ind.small)
   gc()
 }
 
@@ -139,6 +197,61 @@ legend(-3,-9, legend=c("10x60x60",
                         "30x60x60",
                         "40x60x60"),
        col=color[6:10],lty=rep(1,10),lwd=rep(2,10),bty="n")
+
+
+#make plots for paper - make sure to run the stuff above
+#envelopes
+newcolors <- c(color[1], color[2], color[3], color[4], color[1], "red")
+
+plot.inds <- c(2, 4, 5)
+
+par(mgp = c(2.5,1,0),mar = c(4,4.5,3.5,2.5))
+plot(rvals[,1], plot.big[,1], type="n", main="90% AI Envelopes vs Box Size",
+     xlab="r (nm)", ylab=expression(sqrt('K'[3]*'(r)')*'  Anomaly'),
+     ylim=c(-max(abs(c(min(plot.small[,plot.inds]), max(plot.big[,plot.inds])))) - 1, max(abs(c(min(plot.small[,plot.inds]), max(plot.big[,plot.inds])))) + 1), xlim=xlim,
+     cex.lab = 1.75, cex.main = 1.75, cex.axis = 1.25)
+for(i in c(2, 4, 5)){
+  a <- c(rvals[,i], rev(rvals[,i]))
+  b <- c(plot.big[,i], rev(plot.small[,i]))
+  polygon(a, b, col=alpha(newcolors[i], 0.85), border="black", lwd=1.5)
+}
+lines(rvals[,9], plot.big[,9], col = newcolors[6], lwd = 2, lty = 2)
+lines(rvals[,9], plot.small[,9], col = newcolors[6], lwd = 2, lty = 2)
+
+abline(h=0,lty=2,lwd=1,col="black")
+
+legend(-1,7, legend = c("20x20x20 nm",
+                          "40x40x40 nm",
+                          "60x60x60 nm"),
+       col=c(newcolors[c(2, 4, 5)]), lty=c(1, 1, 1), lwd = c(15, 15, 15), bty="n", cex = 1.25, horiz = FALSE)
+legend(-1,-5, legend = "30x60x60 nm", col = newcolors[6], lty = 2, lwd = 2, bty = "n", cex = 1.25)
+
+#envelope width as f_n of box size
+rs <- c(7)
+widths <- matrix(NaN,length(rs),ncol(plot.big))
+
+for(j in (1:length(rs))){
+  for(i in (1:ncol(plot.big))){
+    rind <- which(abs(rs[j]-rvals[,i]) == min(abs(rs[j]-rvals[,i])))
+    widths[j,i] <- plot.big[rind,i] #- plot.small[rind,i]
+  }
+}
+
+x1 <- c(20,30,40,60)
+
+par(mfrow = c(1,1),mar = c(4,4,4,4), mgp = c(2.7,1,0))
+plot(x1,widths[,2:5], ylim = c(0,max(widths[,2:5])),
+     pch = 16, col="blue",
+     xlab = expression(paste('Cube Volume (nm'^'3'*')')),ylab = "Envelope Width",
+     main = "Cubic Volumes", cex = 1.5, cex.lab = 1.5, cex.axis = 1.5)
+
+mdl <- lm(widths[,2:5] ~ I(x1^(-3/2)))
+
+x <- seq(0, 60^3, 1)
+y <- predict(mdl, newdata = data.frame(x1 = x))
+
+lines(x, y, col = "black", lty = 2, lwd = 2)
+
 
 #### Plot each cluster against its envelope ####
 rm(list=ls())
@@ -290,7 +403,7 @@ for (i in c(2, 4, 5, 8, 10)){
 
 
 #### radii at fixed envelope width
-widths <- c(1)
+widths <- c(5)
 rs <- matrix(NaN,length(widths),ncol(env.plot.big))
 
 env.widths <- env.plot.big - env.plot.small

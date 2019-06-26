@@ -29,8 +29,51 @@ data.pca.vals <- predict(pp, met)
 
 rm(deptemp)
 rm(mettemp)
-#### ####
+## ##
 
+
+
+
+
+#### Grid + Random no rb Data ####
+dep <- fread("~/Research/ML/190617_norb/pca.csv",select = c(1:3))
+names(dep) <- c("r","den","gb")
+met <- fread("~/Research/ML/190617_norb/pca.csv",select = c(4,5,6,7,8))
+names(met) <- c("Km","Rm","Rdm","Rddm","Kdm")
+
+pp <- preProcess(met, method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
+data.pca.vals <- predict(pp, met)
+
+## ##
+
+
+
+
+
+#### Grid + Random norb FULL Data ####
+dep.i <- fread("~/Research/ML/190617_norb/tot.csv")
+dep <- dep.i
+for(i in 2:101){
+  dep <- rbind(dep, dep.i)
+}
+names(dep) <- c("r","den","gb")
+rm(dep.i)
+
+met <- fread("~/Research/ML/190617_norb/pca_full/full_1.csv")
+for(i in 2:101){
+  met <- rbind(met, fread(paste("~/Research/ML/190617_norb/pca_full/full_", toString(i),".csv", sep = "")))
+}
+names(met) <- c("Km","Rm","Rdm","Rddm","Kdm")
+
+pp <- preProcess(met, method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
+data.pca.vals <- predict(pp, met)
+
+# get rid of bad data
+met <- met[!(rowSums(is.na(data.pca.vals)) > 0),]
+dep <- dep[!(rowSums(is.na(data.pca.vals)) > 0),]
+data.pca.vals <- data.pca.vals[!(rowSums(is.na(data.pca.vals)) > 0),]
+
+## ##
 
 #### Klocal data import ####
 dep <- fread("~/Research/ML/190311_pca.csv", select = c(1:4))
@@ -40,7 +83,9 @@ names(met) <- c("Km","Rm","Rdm","Rddm","Kdm")#,"Kl")
 
 pp <- preProcess(met, method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
 data.pca.vals <- predict(pp, met)
-#### ####
+## ##
+
+
 
 #### Random Data ####
 dep <- fread("~/Research/ML/190304_pca.csv", select = c(1:4))
@@ -50,7 +95,8 @@ names(met) <- c("Km","Rm","Rdm","Rddm","Kdm")
 
 pp <- preProcess(met, method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
 data.pca.vals <- predict(pp, met)
-#### ####
+## ##
+
 
 #### data to predict ####
 topred.dep <- fread("~/Research/ML/190216_pca.csv", select = c(1:4))
@@ -77,16 +123,21 @@ topred <- data.frame(topred.met, topred.dep, topred.pca)
 
 topred$rw <- (topred$r^4 + 6* (topred$r^2) *(topred$rb * topred$r)^2 + 3 *(topred$rb * topred$r)^4)/(topred$r^3 + 3*topred$r*(topred$rb * topred$r)^2)
 topred$sigma <- topred$rb * topred$r
-#### ####
+## ##
 
-## Old pca
+
+#### Old pca ####
 #data.pca <- prcomp(met, center = TRUE, scale. = TRUE)
 #ggbiplot(data.pca, labels = NA)
 #summary(data.pca)
 #data.pca.vals <- as.data.frame(data.pca$x, names = c("PC1","PC2","PC3","PC4","PC5"))#,"PC6"))
 
+
+
+#### ML ####
 data <- data.frame(met, dep, data.pca.vals)
 
+# only add this if there is rb data
 data$rw <- (data$r^4 + 6* (data$r^2) *(data$rb * data$r)^2 + 3 *(data$rb * data$r)^4)/(data$r^3 + 3*data$r*(data$rb * data$r)^2)
 data$sigma <- data$rb * data$r
 
@@ -98,9 +149,9 @@ trainSet <- data[samp,]
 testSet <- data[-samp,] 
 
 
-out <- 'den'
+out <- 'r'
 #predictors <- c("Km","Rm","Rdm","Rddm","Kdm")
-predictors <- c("PC1","PC2")#,"PC3","PC4")#,"PC5")#,"PC6")
+predictors <- c("PC1","PC2","PC3","PC4","PC5")#,"PC6")
 
 models <- list()
 gc()
@@ -128,6 +179,7 @@ names(models) <- c("lm","knn","elastic-net","brnn","rf")
 compall <- extractPrediction(models, testX = testSet[,predictors], testY = testSet[,out])
 comp <- split(compall, compall$model)
 
+
 #### predict different data ####
 compall_pred <- extractPrediction(models, testX = topred[,predictors], testY = topred[,out])
 comp_pred <- split(compall_pred, compall_pred$model)
@@ -150,9 +202,9 @@ lapply(comp, function(x){
 
 #plot for poster
 xn <- comp[[1]][comp[[1]]$dataType == tt,]
-plot(xn$obs, xn$pred, main = "Cluster Weighted Radius Model", xlab = "True Value", ylab = "Predicted Value", xlim = c(0,10),ylim = c(0,11))
+plot(xn$obs, xn$pred, main = "Cluster Radius Model", xlab = "True Value", ylab = "Predicted Value", xlim = c(2,7),ylim = c(2,7))
 abline(0,1, col = "red", lwd = 1.25)
-legend(0, 11, "True Value = Predicted Value", col = "red", lty = 1, lwd = 2,bty = "n")
+legend(1.8, 7, "True Value = Predicted Value", col = "red", lty = 1, lwd = 2,bty = "n")
 
 # Plot the predictions
 lapply(comp_pred, function(x){
