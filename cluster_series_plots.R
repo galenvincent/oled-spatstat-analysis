@@ -2,6 +2,91 @@
 library(data.table)
 library(rapt)
 library(RColorBrewer)
+library(scales)
+
+
+# K Function Example ------------------------------------------------------
+under <- read.rcp('~/Research/point_patterns/Final/FinalConfig1','~/Research/point_patterns/Final/system1',scaleUp = TRUE,newRadius = 0.5)
+over <- read.rcp('~/Research/point_patterns/Final/FinalConfig2','~/Research/point_patterns/Final/system2',scaleUp = TRUE,newRadius = 0.5)
+under.big <- stitch.size(under, boxSize = c(60,60,60))
+over.big <- stitch.size(over, boxSize = c(60,60,60))
+toSub <- fread('~/Research/K_cluster_series/cubetoSub.csv',drop=1)
+env.r <- fread('~/Research/K_cluster_series/cube.csv',select=2)
+env <- fread('~/Research/K_cluster_series/cube.csv',drop = 1)
+
+cluster <- makecluster(under.big, over.big, 0.5, 0.5, type = "cr", speed = "superfast", cr = 3, den = 0.25, toPlot = TRUE)
+k.obs <- K3est(cluster[[1]], rmax = max(env.r), nrval = length(env.r$V1), correction = "translation")
+k.anom <- anomK3est(cluster[[1]], toSub, max(env.r), length(env.r$V1))
+
+tvals.raw <- matrix(NA, nrow = nrow(env), ncol = ncol(env)-1)
+for(i in 1:nrow(env)){
+  tvals.raw[i,] <- (as.numeric(env[i,2:ncol(env)]) + toSub$x[i])^2
+  print(i)
+}
+
+par(mfrow = c(2,1), mar = c(3, 4, 1, 1.5), mgp = c(2,1,0))
+envPlot(cbind(env.r, tvals.raw), ylim = c(0,15000), xlim = c(0,15), ylab = expression('K'[3]*'(r)'), xlab = "r (arb.)",
+        percentiles = c(0.999), colors= c(alpha('red', 0.7)), leg = FALSE)
+lines(k.obs$r, k.obs$trans, lwd = 2, col = "black")
+legend(0,15000, legend = c('99.9% AI', 'Observed'), col = c(alpha('red', 0.7), 'black'), lty = 1, lwd = c(15,2), bty = 'n', y.intersp = 1.25)
+
+envPlot(env, xlab='r (arb.)', colors = c(alpha('red', 0.7)),
+        percentiles = c(0.999), leg = FALSE, xlim = c(0,15), ylim = c(-1.75,1.75))
+lines(k.anom$r, k.anom$trans, lwd = 2, col = "black")
+legend(0,-0.5, legend = c('99.9% AI','Observed'), col = c(alpha('red', 0.7), 'black'), lty = 1, lwd = c(15,2), bty = 'n', y.intersp = 1.25)
+
+# Better one:
+set.seed(10)
+clust.ppp <- rMaternII(100, 0.2)
+plot(clust.pp3)
+rand.ppp <- rpoint(700)
+plot(rand.ppp)
+cp <- crosspairs(clust.ppp, rand.ppp, rmax = 0.1, what = 'indices')
+rand.clust <- rand.ppp[cp$j]
+rand.background <- rand.ppp[-cp$j]
+plot(coords(rand.clust), col= "red", pch  = 19)
+points(coords(rand.background), col = "blue")
+
+clust.k <- Kest(rand.clust, rmax = 0.5, correction = "translate")
+plot(clust.k)
+
+env <- matrix(NA, ncol = 10001, nrow = length(clust.k$r))
+env[,1] <- clust.k$r
+
+for(i in 1:10000){
+  n <- npoints(rand.clust)
+  rind <- sample(1:npoints(rand.ppp), n)
+  temp <- rand.ppp[rind]
+  temp.k <- Kest(temp, rmax = 0.5, correction = "translate")
+  print(i)
+  env[,i+1] <- temp.k$trans
+}
+
+env.sorted <- t(apply(env[,2:10001], 1, sort))
+env.sqrt <- sqrt(env.sorted) - sqrt(env.sorted[,5000])
+clust.sqrt <- sqrt(clust.k$trans) - sqrt(env.sorted[,5000])
+
+
+par(mfrow = c(3,1), mar = c(4, 4.5, 1, 1.5), mgp = c(3,1,0))
+
+plot(coords(rand.clust), col= "red", pch  = 19, xlim = c(0,1), ylim = c(0,1), cex.axis = 1.25, cex.lab = 1.25)
+points(coords(rand.background), col = "blue")
+legend(0,1,legend = c("Clusters", "Background"),col = c('red','blue'), pch = c(19, 1), y.intersp=1.5, cex = 1, text.width = 0.2)
+
+envPlot(env, xlab = 'r (arb.)', ylab = expression('K(r)'), 
+        percentiles = c(0.999), leg = FALSE, xlim = c(0,max(env[,1])), 
+        ylim = c(0,1), colors = c(alpha('red', 0.7)), cex.lab = 1.25, cex.axis = 1.25)
+lines(clust.k$r, clust.k$trans, col = "black", lwd = 2)
+legend(0,1, legend = c('99.9% AI', 'Observed'), col = c(alpha('red', 0.7), 'black'), 
+       lty = 1, lwd = c(15,2), bty = 'n', y.intersp = 2, cex = 1.5)
+
+envPlot(cbind(env[,1],env.sqrt), xlab = 'r (arb.)', ylab = expression(sqrt('K(r)')*' Anomaly'), 
+        percentiles = c(0.999), leg = FALSE, xlim = c(0,max(env[,1])), 
+        ylim = c(-0.1,0.1), colors = c(alpha('red', 0.7)), cex.lab = 1.25, cex.axis = 1.25)
+lines(clust.k$r, clust.sqrt, col = "black", lwd = 2)
+legend(0,-0.025, legend = c('99.9% AI', 'Observed'), col = c(alpha('red', 0.7), 'black'), 
+       lty = 1, lwd = c(15,2), bty = 'n', y.intersp = 2, cex = 1.5)
+
 
 
 # Metric Example ----------------------------------------------------------
@@ -136,10 +221,10 @@ for(i in 1:4){
 #plots for paper
 de$eff <- de$eff*100
 
-par(mfrow = c(1,1))
+par(mfrow = c(1,1), mgp = c(3,1,0), mar = c(4.5,4.5,3,2.5))
 plot(de$eff, de$mean[[1]],
      ylim=range(c(de$mean[[1]]-de$sd[[1]], de$mean[[1]]+de$sd[[1]]),0),
-     pch=19, xlab='Detector efficiency %', ylab='',
+     pch=19, xlab='Detector efficiency %', ylab='Value',
      cex.lab = 2, cex.axis = 1.5, col = "blue"
 )
 arrows(de$eff[de$sd[[1]] != 0], de$mean[[1]][de$sd[[1]] != 0]-de$sd[[1]][de$sd[[1]] != 0], de$eff[de$sd[[1]] != 0], 
@@ -149,7 +234,7 @@ arrows(de$eff[de$sd[[3]] != 0], abs(de$mean[[3]][de$sd[[3]] != 0]-de$sd[[3]][de$
        abs(de$mean[[3]][de$sd[[3]] != 0]+de$sd[[3]][de$sd[[3]] != 0]), length=0.05, angle=90, code=3, col = "red")
 legend(50, 4, legend = c(expression('K'['max']), expression('Kd'['min'])), pch = 19, col = c("blue", "red"), y.intersp = 1.25, cex= 2, horiz = TRUE, text.width = 10)
 
-par(mfrow = c(1,1))
+par(mfrow = c(1,1), mgp = c(3,1,0), mar = c(4.5,4.5,3,2.5))
 plot(de$eff, de$mean[[2]],
      ylim=c(0,5),
      pch=19, xlab='Detector efficiency %', ylab="r",
@@ -164,7 +249,7 @@ points(de$eff, abs(de$mean[[5]]), pch = 19, col = "forestgreen")
 arrows(de$eff[de$sd[[5]] != 0], abs(de$mean[[5]][de$sd[[5]] != 0]-de$sd[[5]][de$sd[[5]] != 0]), de$eff[de$sd[[5]] != 0], 
        abs(de$mean[[5]][de$sd[[5]] != 0]+de$sd[[5]][de$sd[[5]] != 0]), length=0.05, angle=90, code=3, col = "forestgreen")
 
-legend(40, 1.5, legend = c(expression('R'['max']), expression('Rd'['min']), expression('Rd'['max']^3)), 
+legend(39, 1.5, legend = c(expression('R'['max']), expression('Rd'['min']), expression('Rd'['max']^3)), 
        pch = 19, col = c("blue", "red", "forestgreen"), y.intersp = 1.1, cex= 2,
        horiz = TRUE)
 
@@ -280,10 +365,10 @@ for(i in 1:4){
 }
 
 #plots for paper
-par(mfrow = c(1,1))
+par(mfrow = c(1,1), mgp = c(3,1,0), mar = c(4.5,4.5,3,2.5))
 plot(de$eff, de$mean[[1]],
      ylim=range(c(de$mean[[1]]-de$sd[[1]], de$mean[[1]]+de$sd[[1]]),0),
-     pch=19, xlab='Cluster Radius', ylab='',
+     pch=19, xlab='Cluster radius (arb.)', ylab='Value',
      cex.lab = 2, cex.axis = 1.5, col = "blue"
 )
 arrows(de$eff[de$sd[[1]] != 0], de$mean[[1]][de$sd[[1]] != 0]-de$sd[[1]][de$sd[[1]] != 0], de$eff[de$sd[[1]] != 0], 
@@ -293,10 +378,10 @@ arrows(de$eff[de$sd[[3]] != 0], abs(de$mean[[3]][de$sd[[3]] != 0]-de$sd[[3]][de$
        abs(de$mean[[3]][de$sd[[3]] != 0]+de$sd[[3]][de$sd[[3]] != 0]), length=0.05, angle=90, code=3, col = "red")
 legend(1, 90, legend = c(expression('K'['max']), expression('Kd'['min'])), pch = 19, col = c("blue", "red"), y.intersp = 1.25, cex= 2)
 
-par(mfrow = c(1,1))
+par(mfrow = c(1,1), mgp = c(3,1,0), mar = c(4.5,4.5,3,2.5))
 plot(de$eff, de$mean[[2]],
      ylim=c(0,20),
-     pch=19, xlab='Cluster Radius', ylab="r",
+     pch=19, xlab='Cluster radius (arb.)', ylab="r",
      cex.lab = 2, cex.axis = 1.5, col = "blue"
 )
 arrows(de$eff[de$sd[[2]] != 0], de$mean[[2]][de$sd[[2]] != 0]-de$sd[[2]][de$sd[[2]] != 0], de$eff[de$sd[[2]] != 0], 
@@ -385,11 +470,12 @@ for(i in 1:4){
 }
 
 #plots for paper
+de$eff <- de$eff * 100
 
-par(mfrow = c(1,1))
+par(mfrow = c(1,1), mgp = c(3,1,0), mar = c(4.5,4.5,3,2.5))
 plot(de$eff, de$mean[[1]],
      ylim=range(c(de$mean[[1]]-de$sd[[1]], de$mean[[1]]+de$sd[[1]]),0),
-     pch=19, xlab='Inner-cluster concentration %', ylab='',
+     pch=19, xlab='Intra-cluster concentration %', ylab='Value',
      cex.lab = 2, cex.axis = 1.5, col = "blue"
 )
 arrows(de$eff[de$sd[[1]] != 0], de$mean[[1]][de$sd[[1]] != 0]-de$sd[[1]][de$sd[[1]] != 0], de$eff[de$sd[[1]] != 0], 
@@ -397,12 +483,13 @@ arrows(de$eff[de$sd[[1]] != 0], de$mean[[1]][de$sd[[1]] != 0]-de$sd[[1]][de$sd[[
 points(de$eff, abs(de$mean[[3]]), pch = 19, col = "red")
 arrows(de$eff[de$sd[[3]] != 0], abs(de$mean[[3]][de$sd[[3]] != 0]-de$sd[[3]][de$sd[[3]] != 0]), de$eff[de$sd[[3]] != 0], 
        abs(de$mean[[3]][de$sd[[3]] != 0]+de$sd[[3]][de$sd[[3]] != 0]), length=0.05, angle=90, code=3, col = "red")
-legend(0.15, 11, legend = c(expression('K'['max']), expression('Kd'['min'])), pch = 19, col = c("blue", "red"), y.intersp = 1.25, cex= 2, text.width = 0.125)
+legend(15, 11, legend = c(expression('K'['max']), expression('Kd'['min'])), pch = 19, col = c("blue", "red"), 
+       y.intersp = 1.25, cex= 2, text.width = 14)
 
-par(mfrow = c(1,1))
+par(mfrow = c(1,1), mgp = c(3,1,0), mar = c(4.5,4.5,3,2.5))
 plot(de$eff, de$mean[[2]],
      ylim=c(0,5),
-     pch=19, xlab='Inner-cluster concentration', ylab="r",
+     pch=19, xlab='Intra-cluster concentration %', ylab="r",
      cex.lab = 2, cex.axis = 1.5, col = "blue"
 )
 arrows(de$eff[de$sd[[2]] != 0], de$mean[[2]][de$sd[[2]] != 0]-de$sd[[2]][de$sd[[2]] != 0], de$eff[de$sd[[2]] != 0], 
@@ -414,7 +501,7 @@ points(de$eff, abs(de$mean[[5]]), pch = 19, col = "forestgreen")
 arrows(de$eff[de$sd[[5]] != 0], abs(de$mean[[5]][de$sd[[5]] != 0]-de$sd[[5]][de$sd[[5]] != 0]), de$eff[de$sd[[5]] != 0], 
        abs(de$mean[[5]][de$sd[[5]] != 0]+de$sd[[5]][de$sd[[5]] != 0]), length=0.05, angle=90, code=3, col = "forestgreen")
 
-legend(0.16, 1.5, legend = c(expression('R'['max']), expression('Rd'['min']), expression('Rd'['max']^3)), 
+legend(14, 1.5, legend = c(expression('R'['max']), expression('Rd'['min']), expression('Rd'['max']^3)), 
        pch = 19, col = c("blue", "red", "forestgreen"), y.intersp = 1.1, cex= 2,
        horiz = TRUE)
 
@@ -595,10 +682,10 @@ for(i in 1:4){
 #plots for paper
 de$eff <- de$eff*100
 
-par(mfrow = c(1,1))
+par(mfrow = c(1,1), mgp = c(3,1,0), mar = c(4.5,4.5,3,2.5))
 plot(de$eff, de$mean[[1]],
      ylim=range(c(de$mean[[1]]-de$sd[[1]], de$mean[[1]]+de$sd[[1]]),0),
-     pch=19, xlab=expression(paste('Position blur ',sigma,': % of cluster separation')), ylab='',
+     pch=19, xlab=expression('Position blur %'), ylab='Value',
      cex.lab = 2, cex.axis = 1.5, col = "blue"
 )
 arrows(de$eff[de$sd[[1]] != 0], de$mean[[1]][de$sd[[1]] != 0]-de$sd[[1]][de$sd[[1]] != 0], de$eff[de$sd[[1]] != 0], 
@@ -608,10 +695,10 @@ arrows(de$eff[de$sd[[3]] != 0], abs(de$mean[[3]][de$sd[[3]] != 0]-de$sd[[3]][de$
        abs(de$mean[[3]][de$sd[[3]] != 0]+de$sd[[3]][de$sd[[3]] != 0]), length=0.05, angle=90, code=3, col = "red")
 legend(40, 18, legend = c(expression('K'['max']), expression('Kd'['min'])), pch = 19, col = c("blue", "red"), y.intersp = 1.25, cex= 2, text.width = 10)
 
-par(mfrow = c(1,1))
+par(mfrow = c(1,1), mgp = c(3,1,0), mar = c(4.5,4.5,3,2.5))
 plot(de$eff, de$mean[[2]],
      ylim=c(0,8),
-     pch=19, xlab=expression(paste('Position blur ',sigma,': % of cluster separation')), ylab="r",
+     pch=19, xlab=expression('Position blur %'), ylab="r",
      cex.lab = 2, cex.axis = 1.5, col = "blue"
 )
 arrows(de$eff[de$sd[[2]] != 0], de$mean[[2]][de$sd[[2]] != 0]-de$sd[[2]][de$sd[[2]] != 0], de$eff[de$sd[[2]] != 0], 
@@ -623,8 +710,8 @@ points(de$eff, abs(de$mean[[5]]), pch = 19, col = "forestgreen")
 arrows(de$eff[de$sd[[5]] != 0], abs(de$mean[[5]][de$sd[[5]] != 0]-de$sd[[5]][de$sd[[5]] != 0]), de$eff[de$sd[[5]] != 0], 
        abs(de$mean[[5]][de$sd[[5]] != 0]+de$sd[[5]][de$sd[[5]] != 0]), length=0.05, angle=90, code=3, col = "forestgreen")
 
-legend(2.5, 2.5, legend = c(expression('R'['max']), expression('Rd'['min']), expression('Rd'['max']^3)), 
-       pch = 19, col = c("blue", "red", "forestgreen"), y.intersp = 1.1, cex= 2, text.width = 10,
+legend(-0.015, 2.5, legend = c(expression('R'['max']), expression('Rd'['min']), expression('Rd'['max']^3)), 
+       pch = 19, col = c("blue", "red", "forestgreen"), y.intersp = 1.1, cex= 2, text.width = .12,
        horiz = TRUE)
 
 
@@ -729,10 +816,10 @@ for(i in 1:4){
 #plots for paper
 de$eff <- de$eff*100
 
-par(mfrow = c(1,1))
+par(mfrow = c(1,1), mgp = c(3,1,0), mar = c(4.5,4.5,3,2.5))
 plot(de$eff, de$mean[[1]],
      ylim=range(c(de$mean[[1]]-de$sd[[1]], de$mean[[1]]+de$sd[[1]]),0),
-     pch=19, xlab=expression(paste('Radius blur ',sigma,': % of cluster radius')), ylab='',
+     pch=19, xlab=expression('Radius blur %'), ylab='Value',
      cex.lab = 2, cex.axis = 1.5, col = "blue"
 )
 arrows(de$eff[de$sd[[1]] != 0], de$mean[[1]][de$sd[[1]] != 0]-de$sd[[1]][de$sd[[1]] != 0], de$eff[de$sd[[1]] != 0], 
@@ -742,10 +829,10 @@ arrows(de$eff[de$sd[[3]] != 0], abs(de$mean[[3]][de$sd[[3]] != 0]-de$sd[[3]][de$
        abs(de$mean[[3]][de$sd[[3]] != 0]+de$sd[[3]][de$sd[[3]] != 0]), length=0.05, angle=90, code=3, col = "red")
 legend(40, 18, legend = c(expression('K'['max']), expression('Kd'['min'])), pch = 19, col = c("blue", "red"), y.intersp = 1.25, cex= 2, text.width = 10)
 
-par(mfrow = c(1,1))
+par(mfrow = c(1,1), mgp = c(3,1,0), mar = c(4.5,4.5,3,2.5))
 plot(de$eff, de$mean[[2]],
      ylim=c(0,11),
-     pch=19, xlab=expression(paste('Radius blur ',sigma,': % of cluster radius')), ylab="r",
+     pch=19, xlab=expression('Radius blur %'), ylab="r",
      cex.lab = 2, cex.axis = 1.5, col = "blue"
 )
 arrows(de$eff[de$sd[[2]] != 0], de$mean[[2]][de$sd[[2]] != 0]-de$sd[[2]][de$sd[[2]] != 0], de$eff[de$sd[[2]] != 0], 
@@ -757,8 +844,8 @@ points(de$eff, abs(de$mean[[5]]), pch = 19, col = "forestgreen")
 arrows(de$eff[de$sd[[5]] != 0], abs(de$mean[[5]][de$sd[[5]] != 0]-de$sd[[5]][de$sd[[5]] != 0]), de$eff[de$sd[[5]] != 0], 
        abs(de$mean[[5]][de$sd[[5]] != 0]+de$sd[[5]][de$sd[[5]] != 0]), length=0.05, angle=90, code=3, col = "forestgreen")
 
-legend(2.5, 3, legend = c(expression('R'['max']), expression('Rd'['min']), expression('Rd'['max']^3)), 
-       pch = 19, col = c("blue", "red", "forestgreen"), y.intersp = 1.1, cex= 2, text.width = 10,
+legend(1, 3, legend = c(expression('R'['max']), expression('Rd'['min']), expression('Rd'['max']^3)), 
+       pch = 19, col = c("blue", "red", "forestgreen"), y.intersp = 1.1, cex= 2, text.width = 11,
        horiz = TRUE)
 
 # Binomial Radius Blur ----------------------------------------------------

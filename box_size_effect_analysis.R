@@ -75,8 +75,8 @@ newcolors <- c(color[1], color[2], color[3], color[4], color[1], "red")
 
 par(mgp = c(2.5,1,0),mar = c(4,4.5,3.5,2.5))
 plot(rvals[,1], plot.big[,1], type="n", main="99.9% AI Envelopes vs Box Size",
-     xlab="r (nm)", ylab=expression(sqrt('K'[3]*'(r)')*'  Anomaly'),
-     ylim=c(-7.25,7.25), xlim=xlim,
+     xlab="r (arb.)", ylab=expression(sqrt('K'[3]*'(r)')*'  Anomaly'),
+     ylim=c(-8,8), xlim=xlim,
      cex.lab = 1.75, cex.main = 1.75, cex.axis = 1.25)
 for(i in c(2, 4, 5)){
   a <- c(rvals[,i], rev(rvals[,i]))
@@ -87,12 +87,13 @@ lines(rvals[,9], plot.big[,9], col = newcolors[6], lwd = 2, lty = 2)
 lines(rvals[,9], plot.small[,9], col = newcolors[6], lwd = 2, lty = 2)
 
 abline(h=0,lty=2,lwd=1,col="black")
+abline(v=7,lty=2,lwd=2,col="black")
 
-legend(-1,8.3, legend = c("20x20x20 nm",
-                      "40x40x40 nm",
-                      "60x60x60 nm"),
+legend(-1,8.3, legend = c("20x20x20",
+                      "40x40x40",
+                      "60x60x60"),
        col=c(newcolors[c(2, 4, 5)]), lty=c(1, 1, 1), lwd = c(15, 15, 15), bty="n", cex = 1.25)
-legend(-1,-5, legend = "30x60x60 nm", col = newcolors[6], lty = 2, lwd = 2, bty = "n", cex = 1.25)
+legend(-1,-5, legend = "30x60x60", col = newcolors[6], lty = 2, lwd = 2, bty = "n", cex = 1.25)
 
 #envelope width as f_n of box size
 rs <- c(7)
@@ -107,10 +108,10 @@ for(j in (1:length(rs))){
 
 x1 <- c(15,20,30,40,60)
 
-par(mfrow = c(1,1),mar = c(4,4,4,4), mgp = c(2.7,1,0))
+par(mfrow = c(1,1),mar = c(4,4,2,2), mgp = c(2.7,1,0))
 plot(x1,widths[,1:5], ylim = c(0,max(widths[,1:5])),
      pch = 16, col="blue",
-     xlab = expression(paste('Cube Volume (nm'^'3'*')')),ylab = "Envelope Width",
+     xlab = 'Cube Side Length (arb.)',ylab = "Envelope Width",
      main = "Cubic Volumes", cex = 1.5, cex.lab = 1.5, cex.axis = 1.5)
 
 mdl <- lm(widths[,1:5] ~ I(x1^(-3/2)))
@@ -207,8 +208,10 @@ plot.inds <- c(2, 4, 5)
 
 par(mgp = c(2.5,1,0),mar = c(4,4.5,3.5,2.5))
 plot(rvals[,1], plot.big[,1], type="n", main="90% AI Envelopes vs Box Size",
-     xlab="r (nm)", ylab=expression(sqrt('K'[3]*'(r)')*'  Anomaly'),
-     ylim=c(-max(abs(c(min(plot.small[,plot.inds]), max(plot.big[,plot.inds])))) - 1, max(abs(c(min(plot.small[,plot.inds]), max(plot.big[,plot.inds])))) + 1), xlim=xlim,
+     xlab="r (arb.)", ylab=expression(sqrt('K'[3]*'(r)')*'  Anomaly'),
+     #ylim=c(-max(abs(c(min(plot.small[,plot.inds]), max(plot.big[,plot.inds])))) - 1, max(abs(c(min(plot.small[,plot.inds]), max(plot.big[,plot.inds])))) + 1), 
+     ylim = c(-8,8),
+     xlim=xlim,
      cex.lab = 1.75, cex.main = 1.75, cex.axis = 1.25)
 for(i in c(2, 4, 5)){
   a <- c(rvals[,i], rev(rvals[,i]))
@@ -219,12 +222,13 @@ lines(rvals[,9], plot.big[,9], col = newcolors[6], lwd = 2, lty = 2)
 lines(rvals[,9], plot.small[,9], col = newcolors[6], lwd = 2, lty = 2)
 
 abline(h=0,lty=2,lwd=1,col="black")
+abline(v=7,lty=2, lwd=2, col = "black")
 
-legend(-1,7, legend = c("20x20x20 nm",
-                          "40x40x40 nm",
-                          "60x60x60 nm"),
+legend(-1,9, legend = c("20x20x20",
+                          "40x40x40",
+                          "60x60x60"),
        col=c(newcolors[c(2, 4, 5)]), lty=c(1, 1, 1), lwd = c(15, 15, 15), bty="n", cex = 1.25, horiz = FALSE)
-legend(-1,-5, legend = "30x60x60 nm", col = newcolors[6], lty = 2, lwd = 2, bty = "n", cex = 1.25)
+legend(-1,-5, legend = "30x60x60", col = newcolors[6], lty = 2, lwd = 2, bty = "n", cex = 1.25)
 
 #envelope width as f_n of box size
 rs <- c(7)
@@ -239,13 +243,14 @@ for(j in (1:length(rs))){
 
 x1 <- c(20,30,40,60)
 
-par(mfrow = c(1,1),mar = c(4,4,4,4), mgp = c(2.7,1,0))
+par(mfrow = c(1,1),mar = c(4,4,2,2), mgp = c(2.7,1,0))
 plot(x1,widths[,2:5], ylim = c(0,max(widths[,2:5])),
      pch = 16, col="blue",
-     xlab = expression(paste('Cube Volume (nm'^'3'*')')),ylab = "Envelope Width",
+     xlab = 'Cube Side Length (arb.)' ,ylab = "Envelope Width",
      main = "Cubic Volumes", cex = 1.5, cex.lab = 1.5, cex.axis = 1.5)
 
 mdl <- lm(widths[,2:5] ~ I(x1^(-3/2)))
+#mdl <- nls(widths[,2:5] ~ a*(x1 - b)^(-3/2), start = list(a = 191, b = 0))
 
 x <- seq(0, 60^3, 1)
 y <- predict(mdl, newdata = data.frame(x1 = x))
