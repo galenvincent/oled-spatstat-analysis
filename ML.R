@@ -98,6 +98,47 @@ data.pca.vals <- predict(pp, met)
 ## ##
 
 
+#### Full raw data ------------------------------------------------------
+load('Z:/Galen/Machine\ Learning\ Files/190709_params.RData')
+load('Z:/Galen/Machine\ Learning\ Files/190709_sim.res.RData')
+
+data.unlisted <- matrix(NA, nrow = length(sim.res)*nrow(sim.res[[1]]), ncol = 9)
+
+cnt <- 1
+for(i in 1:length(sim.res)){
+  for(j in 1:nrow(sim.res[[1]])){
+    data.unlisted[cnt, 1:4] <- params[[i]]
+    data.unlisted[cnt, 5:9] <- sim.res[[i]][j,]
+    cnt <- cnt + 1
+  }
+}
+
+data.unlisted <- as.data.frame(data.unlisted)
+names(data.unlisted) <- c("r","den","rb","gb","Km","Rm","Rdm","Rddm","Kdm")
+data.unlisted$rw <- (data.unlisted$r^4 + 6* (data.unlisted$r^2) *(data.unlisted$rb * data.unlisted$r)^2 + 3 *(data.unlisted$rb * data.unlisted$r)^4)/(data.unlisted$r^3 + 3*data.unlisted$r*(data.unlisted$rb * data.unlisted$r)^2)
+data.unlisted$sigma <- data.unlisted$rb * data.unlisted$r
+
+test.ind <- sample(1:nrow(data.unlisted), 0.2*nrow(data.unlisted))
+data.test <- data.unlisted[test.ind,]
+data.train <- data.unlisted[-test.ind,]
+
+#data.train <- data.unlisted
+
+#drop NA rows
+data.test <- data.test[!is.na(data.test$Km) & !is.na(data.test$Rdm) & !is.na(data.test$Rddm),]
+data.train <- data.train[!is.na(data.train$Km) & !is.na(data.train$Rdm) & !is.na(data.train$Rddm),]
+
+mets <- c("Km","Rm","Rdm","Rddm","Kdm")
+
+pp.train <- preProcess(data.train[,mets], method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
+
+data.train.pca <- predict(pp.train, data.train[,mets])
+data.test.pca <- predict(pp.train, data.test[,mets])
+
+trainSet <- data.frame(data.train, data.train.pca)
+testSet <- data.frame(data.test, data.test.pca)
+#
+
 #### data to predict ####
 topred.dep <- fread("~/Research/ML/190216_pca.csv", select = c(1:4))
 names(topred.dep) <- c("r","den","rb","gb")
@@ -133,7 +174,6 @@ topred$sigma <- topred$rb * topred$r
 #data.pca.vals <- as.data.frame(data.pca$x, names = c("PC1","PC2","PC3","PC4","PC5"))#,"PC6"))
 
 
-
 #### ML ####
 data <- data.frame(met, dep, data.pca.vals)
 
@@ -151,44 +191,45 @@ testSet <- data[-samp,]
 
 out <- 'r'
 #predictors <- c("Km","Rm","Rdm","Rddm","Kdm")
-predictors <- c("PC1","PC2","PC3","PC4","PC5")#,"PC6")
+predictors <- c("PC1","PC2","PC3","PC4","PC5")
 
 models <- list()
 gc()
 
 
 # Based on all
-models[[1]] <- train(trainSet[,predictors],trainSet[,out],method = "glm",trControl = trainControl("cv", number = 10))
+models[[1]] <- train(trainSet[,predictors], trainSet[,out], method = "glm", trControl = trainControl("cv", number = 10))
 
-models[[2]] <- train(trainSet[,predictors],trainSet[,out],method = "knn",preProcess = c("center","scale"), tuneLength = 10)
+models[[2]] <- train(trainSet[,predictors], trainSet[,out], method = "knn", tuneLength = 10)
 
 models[[3]] <- train(trainSet[,predictors], trainSet[,out], 
                method = "glmnet", 
                trControl = trainControl("cv", number = 10),
                tuneLength = 10)
-models[[4]] <- train(trainSet[,predictors],trainSet[,out],method = "brnn", trControl = trainControl("cv", number = 10))
 
-cl <- makeCluster(detectCores())
-registerDoParallel(cl)
-models[[5]] <- train(trainSet[,predictors],trainSet[,out],method = "parRF", trControl = trainControl("cv", number = 10))
-stopCluster(cl)
-registerDoSEQ()
+models[[4]] <- train(trainSet[,predictors], trainSet[,out], method = "brnn", trControl = trainControl("cv", number = 10))
 
-names(models) <- c("lm","knn","elastic-net","brnn","rf")
+# cl <- makeCluster(detectCores())
+# registerDoParallel(cl)
+# models[[5]] <- train(trainSet[,predictors],trainSet[,out],method = "parRF", trControl = trainControl("cv", number = 10))
+# stopCluster(cl)
+# registerDoSEQ()
+
+names(models) <- c("lm","knn","elastic-net","brnn")#,"rf")
 
 compall <- extractPrediction(models, testX = testSet[,predictors], testY = testSet[,out])
 comp <- split(compall, compall$model)
-
 
 #### predict different data ####
 compall_pred <- extractPrediction(models, testX = topred[,predictors], testY = topred[,out])
 comp_pred <- split(compall_pred, compall_pred$model)
 
-# predict on the cut data, yo
+#### predict on the cut data, yo ####
 compall_pred.chop <- extractPrediction(models, testX = topred.chop[,predictors], testY = topred.chop[,out])
 comp_pred.chop <- split(compall_pred.chop, compall_pred.chop$model)
 
-#Test or train "Test" or "Training"
+#### See model results and comparison ####
+# "Test" or "Train" - Plot the models vs the test data or on the training data
 tt <- "Test"
 
 lapply(comp, function(x){
@@ -200,13 +241,13 @@ lapply(comp, function(x){
   return(ds)
 })
 
-#plot for poster
+#### plot for poster ####
 xn <- comp[[1]][comp[[1]]$dataType == tt,]
 plot(xn$obs, xn$pred, main = "Cluster Radius Model", xlab = "True Value", ylab = "Predicted Value", xlim = c(2,7),ylim = c(2,7))
 abline(0,1, col = "red", lwd = 1.25)
 legend(1.8, 7, "True Value = Predicted Value", col = "red", lty = 1, lwd = 2,bty = "n")
 
-# Plot the predictions
+#### Plot the predictions ####
 lapply(comp_pred, function(x){
   xn <- x[x$dataType == "Test",]
   ds <- defaultSummary(xn)
@@ -216,8 +257,10 @@ lapply(comp_pred, function(x){
   return(ds)
 })
 
-# Plot the predictions - the chopped off edges of the grid data to test the 
-# theory that the random model does bad predicting around the "edges" of the dataset
+#### Plot the chopped predictions ####
+# Look at the chopped off edges of the grid data to test the 
+# theory that the random model does bad predicting around the 
+# "edges" of the dataset
 for(i in 1:length(models)){
   xn <- comp_pred.chop[[i]][comp_pred.chop[[i]]$dataType == "Test",]
   ds <- defaultSummary(xn)
@@ -233,3 +276,113 @@ for(i in 1:length(models)){
 
 
 
+
+
+#### Paper ML work ####
+# Load training data and calculate PCAs: Select either rb or norb files to load
+load('Z:/Galen/Machine\ Learning\ Files/190710_params_norb.RData')
+load('Z:/Galen/Machine\ Learning\ Files/190710_sim.res_norb.RData')
+
+# RB
+# data.unlisted <- matrix(NA, nrow = length(sim.res)*nrow(sim.res[[1]]), ncol = 9)
+# 
+# cnt <- 1
+# for(i in 1:length(sim.res)){
+#   for(j in 1:nrow(sim.res[[1]])){
+#     data.unlisted[cnt, 1:4] <- params[[i]]
+#     data.unlisted[cnt, 5:9] <- sim.res[[i]][j,]
+#     cnt <- cnt + 1
+#   }
+# }
+
+#NORB
+data.unlisted <- matrix(NA, nrow = length(sim.res)*nrow(sim.res[[1]]), ncol = 8)
+
+cnt <- 1
+for(i in 1:length(sim.res)){
+  for(j in 1:nrow(sim.res[[1]])){
+    data.unlisted[cnt, 1:3] <- params[[i]]
+    data.unlisted[cnt, 4:8] <- sim.res[[i]][j,]
+    cnt <- cnt + 1
+  }
+}
+
+data.unlisted <- as.data.frame(data.unlisted) 
+#names(data.unlisted) <- c("r","den","rb","gb","Km","Rm","Rdm","Rddm","Kdm") #RB
+names(data.unlisted) <- c("r","den","gb","Km","Rm","Rdm","Rddm","Kdm") #NORB
+
+#rb only
+data.unlisted$rw <- (data.unlisted$r^4 + 6* (data.unlisted$r^2) *(data.unlisted$rb * data.unlisted$r)^2 + 3 *(data.unlisted$rb * data.unlisted$r)^4)/(data.unlisted$r^3 + 3*data.unlisted$r*(data.unlisted$rb * data.unlisted$r)^2)
+data.unlisted$sigma <- data.unlisted$rb * data.unlisted$r
+
+#drop NA rows
+data.unlisted <- data.unlisted[!is.na(data.unlisted$Km) & !is.na(data.unlisted$Rdm) & !is.na(data.unlisted$Rddm),]
+
+# Select metrics here
+mets <- c("Km","Rm","Rdm","Rddm","Kdm")
+mets <- c("Km","Rm","Rdm","Kdm")
+mets <- c("Km","Rm")
+pp.train <- preProcess(data.unlisted[,mets], method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
+
+
+# Load in test data
+load('Z:/Galen/Machine\ Learning\ Files/ml.test.results.norb.RData')
+test.set.norb <- test.set
+rm(test.set)
+load('Z:/Galen/Machine\ Learning\ Files/ml.test.results.RData')
+test.set <- as.data.frame(test.set)
+test.set.norb <- as.data.frame(test.set.norb)
+names(test.set) <- c("r","den","rb","gb","Km","Rm","Rdm","Rddm","Kdm")
+names(test.set.norb) <- c("r","den","gb","Km","Rm","Rdm","Rddm","Kdm")
+test.set <- test.set[!is.na(test.set$Km) & !is.na(test.set$Rdm) & !is.na(test.set$Rddm),]
+test.set.norb <- test.set.norb[!is.na(test.set.norb$Km) & !is.na(test.set.norb$Rdm) & !is.na(test.set.norb$Rddm),]
+test.set$rw <- (test.set$r^4 + 6* (test.set$r^2) *(test.set$rb * test.set$r)^2 + 3 *(test.set$rb * test.set$r)^4)/(test.set$r^3 + 3*test.set$r*(test.set$rb * test.set$r)^2)
+test.set$sigma <- test.set$rb * test.set$r
+
+# Make sure the pca is evaled up above in "full raw data"
+test.pca <- predict(pp.train, test.set[,mets])
+test.pca.norb <- predict(pp.train, test.set.norb[,mets])
+
+
+##Load in a model
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_rw.RData')
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_4met_rw.RData')
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_2met_rw.RData')
+
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_den.RData')
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_4met_den.RData')
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_2met_den.RData')
+
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_norb_r.RData')
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_norb_4met_r.RData')
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_norb_2met_r.RData')
+
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_norb_den.RData')
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_norb_4met_den.RData')
+load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_norb_2met_den.RData')
+
+predictors <- sapply(1:length(mets),function(x){paste('PC',toString(x),sep = '')})
+out <- 'den'
+
+test <- data.frame(test.set.norb, test.pca.norb)
+
+##Predict test data with model
+toRound <- 6
+par(mar = c(4,4,3,3))
+model.res <- lapply(models, function(x){
+  a <- predict(x, newdata = test[,predictors])
+  RMSE <- mean((a-test[,out])^2, na.rm = TRUE)
+  plot(test[,out], a, main = x$method, xlab = "Input Simulation Value", ylab = "Estimated Value")
+  abline(0,1, col = "red", lwd = 1.25)
+  print(x$method)
+  print(paste('RMSE: ', toString(round(RMSE,toRound)), sep = ''))
+})
+
+#Plot for paper
+par(mgp = c(2, 1, 0), mar = c(3.5, 3.5, 2, 2))
+i <- 3
+a <- predict(models[[i]], newdata = test[,predictors])
+plot(test[,out], a, main = models[[i]]$method, xlab = "Input Simulation Value", ylab = "Estimated Value")
+abline(0,1, col = "red", lwd = 1.25)
+legend(1.8, 10, "True Value = Predicted Value", col = "red", lty = 1, lwd = 2,bty = "n")
+#

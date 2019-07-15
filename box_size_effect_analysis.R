@@ -12,8 +12,8 @@ rvals <- matrix(NaN,200,10)
 
 #### RRL Envelopes only ####
 for(i in (1:10)){
-  rtemp <- fread(paste('~/Research/box_size_effect/RRL',toString(i),'.csv',sep=""),select=2) # r values
-  tvals <- fread(paste('~/Research/box_size_effect/RRL',toString(i),'.csv',sep=""),drop=c(1,2)) # results 
+  rtemp <- fread(paste('Z:/Galen/Box\ Size\ RRLs/RRL',toString(i),'.csv',sep=""),select=2) # r values
+  tvals <- fread(paste('Z:/Galen/Box\ Size\ RRLs/RRL',toString(i),'.csv',sep=""),drop=c(1,2)) # results 
   nTests <- ncol(tvals) # number of tests done
   prange <- percentile*nTests # get the range of indeces for which each percentile spans
   
@@ -70,12 +70,30 @@ legend(-1,11, legend=c("10x60x60",
 
 
 #make plots for paper - make sure to run the stuff above
+# Get one cluster RRL on there
+n <- 523
+tvals.clust <- matrix(NaN,200,n)
+percentile <- 0.90
+for(j in (1:n)){
+  tvals.clust[,j] <- fread(paste('~/Research/box_size_effect/190624_density_0.5/result',toString(j),'_5.csv',sep=""),select=2)$trans # results 
+}
+prange <- percentile*n# get the range of indeces for which each percentile spans
+
+sortedtVals <- t(apply(tvals.clust,1,sort)) # sort the results at each r value from lowest to highest
+
+ind.big <- round(n/2)+floor(prange/2) # select the high end indexes based on being 1/2 of the percentile span from the middle of the tests
+ind.small <- round(n/2)-floor(prange/2) # do the same for the low end
+
+plot.big.clust <- sortedtVals[,ind.big]
+plot.small.clust <- sortedtVals[,ind.small]
+
+
 #envelopes
 newcolors <- c(color[1], color[2], color[3], color[4], color[1], "red")
 
 par(mgp = c(2.5,1,0),mar = c(4,4.5,3.5,2.5))
 plot(rvals[,1], plot.big[,1], type="n", main="99.9% AI Envelopes vs Box Size",
-     xlab="r (arb.)", ylab=expression(sqrt('K'[3]*'(r)')*'  Anomaly'),
+     xlab="r (arb.)", ylab= 'T(r)',
      ylim=c(-8,8), xlim=xlim,
      cex.lab = 1.75, cex.main = 1.75, cex.axis = 1.25)
 for(i in c(2, 4, 5)){
@@ -86,14 +104,18 @@ for(i in c(2, 4, 5)){
 lines(rvals[,9], plot.big[,9], col = newcolors[6], lwd = 2, lty = 2)
 lines(rvals[,9], plot.small[,9], col = newcolors[6], lwd = 2, lty = 2)
 
+lines(rvals[,5], plot.big.clust, col = 'black', lwd = 2)
+lines(rvals[,5], plot.small.clust, col = 'black', lwd = 2)
+
 abline(h=0,lty=2,lwd=1,col="black")
 abline(v=7,lty=2,lwd=2,col="black")
 
-legend(-1,8.3, legend = c("20x20x20",
+legend(10,8.5, legend = c("20x20x20",
                       "40x40x40",
                       "60x60x60"),
        col=c(newcolors[c(2, 4, 5)]), lty=c(1, 1, 1), lwd = c(15, 15, 15), bty="n", cex = 1.25)
-legend(-1,-5, legend = "30x60x60", col = newcolors[6], lty = 2, lwd = 2, bty = "n", cex = 1.25)
+legend(10,-5, legend = "30x60x60", col = newcolors[6], lty = 2, lwd = 2, bty = "n", cex = 1.25)
+legend(10,-6.5, legend = "60x60x60 clusters", col = 'black', lty = 1, lwd = 2, bty = 'n', cex = 1.25)
 
 #envelope width as f_n of box size
 rs <- c(7)
@@ -431,3 +453,7 @@ plot(x2,rs[1,6:10],pch = 6, col="red",xlab = "Box Height (h) [nm]", ylab = "Radi
 
 
 
+
+#### Metric SD vs box size ####
+load('~/Research/box_size_effect/...')
+load('~/Research/box_size_effect/...')

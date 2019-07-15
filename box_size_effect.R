@@ -4,13 +4,14 @@ library(rapt)
 library(parallel)
 library(data.table)
 library(RColorBrewer)
-
+library(zoo)
 
 # K function --------------------------------------------------------------
 
 # Doing n realizations of the same type of clustering, split the rcp patterns
 # into 2 different sets. The under patterns and the over patterns
 
+#### 100% CLUSTER DENSITY ####
 n <- 523 # number of RCP patterns you have
 
 under.nums <- seq(2,(n+1),1)
@@ -83,7 +84,7 @@ parLapply(cl, 1:p, function(i){
 })
 stopCluster(cl)
 
-#### 50% CLUSTER DENSITY
+#### 50% CLUSTER DENSITY ####
 # Doing 101 realizations of the same type of clustering, split the rcp patterns
 # into 2 different sets. The under patterns and the over patterns
 under.nums <- seq(2,102,1)
@@ -140,61 +141,118 @@ for(i in(1:length(under.nums))){
 }
 
 
-#### 50% CLUSTER DENSITY
-# Doing 101 realizations of the same type of clustering, split the rcp patterns
-# into 2 different sets. The under patterns and the over patterns
-under.nums <- seq(2,102,1)
+#### 50% CLUSTER DENSITY - Metric tracking ####
+rm(list = ls())
+gc()
+n <- 8
+
+under.nums <- seq(2,n+1,1)
 under.nums[length(under.nums)] <- 1
-over.nums <- seq(1,101,1)
+over.nums <- seq(1,n,1)
 
 cluster.sizes <- list(c(15,15,15),
                       c(20,20,20),
                       c(30,30,30),
                       c(40,40,40),
-                      c(60,60,60),
-                      c(60,60,10),
-                      c(60,60,15),
-                      c(60,60,20),
-                      c(60,60,30),
-                      c(60,60,40))
+                      c(50,50,50),
+                      c(60,60,60))
 
-toSub <- vector("list",10)
-env.r <- vector("list",10)
-for(i in(1:10)){
-  toSub[[i]] <- fread(paste('~/Research/box_size_effect/RRLtoSub',toString(i),'.csv',sep=""),drop=1)
-  env.r[[i]] <- fread(paste('~/Research/box_size_effect/RRL',toString(i),'.csv',sep=""),select=2)
+toSub <- vector("list",length(cluster.sizes))
+env.r <- vector("list",length(cluster.sizes))
+for(i in 1:length(cluster.sizes)){
+  if(i == 5){
+    toSub[[i]] <- 'placeholder'
+    env.r[[i]] <- 'placeholder'
+    
+    #toSub[[i]] <- fread('Z:/Galen/Box\ Size\ RRLs/RRLtoSub11.csv', drop=1)
+    #env.r[[i]] <- fread('Z:/Galen/Box\ Size\ RRLs/RRL11.csv', select=2)
+    
+    #HPC
+    #toSub[[i]] <- fread('~/scratch/Rcode/RRLs/RRLtoSub11.csv', drop=1)
+    #env.r[[i]] <- fread('~/scratch/Rcode/RRLs/RRL11.csv', select=2)
+    
+    next
+  }
+  toSub[[i]] <- fread(paste('Z:/Galen/Box\ Size\ RRLs/RRLtoSub',toString(i),'.csv',sep=''), drop=1)
+  env.r[[i]] <- fread(paste('Z:/Galen/Box\ Size\ RRLs/RRL',toString(i),'.csv',sep=''), select=2)
+  
+  #HPC
+  #toSub[[i]] <- fread(paste('~/scratch/Rcode/RRLs/RRLtoSub',toString(i),'.csv',sep=''), drop=1)
+  #env.r[[i]] <- fread(paste('~/scratch/Rcode/RRLs/RRL',toString(i),'.csv',sep=''), select=2)
 }
 
+cl <- makePSOCKcluster(detectCores())
+clusterEvalQ(cl, c(library(rapt)))
+clusterExport(cl, c('cluster.sizes','toSub','env.r','under.nums','over.nums'))
+
+
 #loop
-for(i in(1:length(under.nums))){
+res <- parLapply(cl, 1:n, function(i){
   #upload
   under <- read.rcp(paste('~/Research/point_patterns/Final/FinalConfig',toString(under.nums[i]),sep=""),paste('~/Research/point_patterns/Final/system',toString(under.nums[i]),sep=""),scaleUp = TRUE,newRadius = 0.5)
   over <- read.rcp(paste('~/Research/point_patterns/Final/FinalConfig',toString(over.nums[i]),sep=""),paste('~/Research/point_patterns/Final/system',toString(over.nums[i]),sep=""),scaleUp = TRUE,newRadius = 0.5)
   
-  under.big <- stitch(under,c(3,3,3))
-  over.big <- stitch(over,c(3,3,3))
+  #HPC
+  #under <- read.rcp(paste('~/scratch/Rcode/RCP/FinalConfig',toString(under.nums[i]),sep=""),paste('~/scratch/Rcode/RCP/system',toString(under.nums[i]),sep=""),scaleUp = TRUE,newRadius = 0.5)
+  #over <- read.rcp(paste('~/scratch/Rcode/RCP/FinalConfig',toString(over.nums[i]),sep=""),paste('~/scratch/Rcode/RCP/system',toString(over.nums[i]),sep=""),scaleUp = TRUE,newRadius = 0.5)
+  
+  
+  under.big <- stitch.size(under, boxSize = c(60,60,60))
+  over.big <- stitch.size(over, boxSize = c(60,60,60))
   #make cluster
-  cluster <- makecluster(under.big,over.big,0.5,0.5,type="cr",speed="superfast",cr=2,den=0.5)
+  cluster <- makecluster(under.big, over.big, 0.5, 0.5, type="cr", speed="superfast", cr=3, den=0.5)
+  
+  rvals <- matrix(NA, nrow = 200, ncol = length(cluster.sizes))
+  kres <- matrix(NA, nrow = 200, ncol = length(cluster.sizes))
+  metricres <- matrix(NA, nrow = 5, ncol = length(cluster.sizes))
   
   #test on each of the different cluster sizes below here
-  
-  for(j in(1:10)){
+  for(j in(1:length(cluster.sizes))){
+    if(j == 5){
+      next
+    }
+    
     #cut it down to size
-    cluster.cut <- subSquare(cluster[[1]],cluster.sizes[[j]])
+    cluster.cut <- subSquare(cluster[[1]], cluster.sizes[[j]])
     
     #test
-    result <- anomK3est(cluster.cut,toSub[[j]],max(env.r[[j]]),200,correction="trans")
+    result <- anomK3est(cluster.cut, toSub[[j]], max(env.r[[j]]), 200, correction="trans")
+    rvals[,j] <- result$r
+    kres[,j] <- result$trans
     
-    #output
-    fwrite(result,paste('~/Research/box_size_effect/density_0.5/result',toString(j),'_',toString(i),'.csv',sep=""),sep=',')
-    rm(cluster.cut)
+    rvals.new <- result$r[10:length(result$r)]
+    tvals.new <- result$trans[10:length(result$trans)]
+    
+    metricres[,j] <- unlist(k3metrics(rvals.new, tvals.new, toplot = FALSE))
+    
+    rm(cluster.cut, result, rvals.new, tvals.new)
     gc()
+    #print(paste(toString(i),'_',toString(j),sep = ''))
   }
+  
   #clear memory
-  rm(under,over,under.big,over.big,cluster,result)
+  rm(under,over,under.big,over.big,cluster)
   gc()
-  #repeat
-}
+  
+  return(list(rvals = rvals, kres = kres, mets = metricres))
+})
+stopCluster(cl)
+
+kres <- list()
+metricres <- list()
+for(i in 1:length(cluster.sizes)){
+  kres[[i]] <- matrix(NA, nrow = 200, ncol = n+1)
+  metricres[[i]] <- matrix(NA, nrow = 5, ncol = n)
+  
+  kres[[i]][,1] <- res[[1]]$rvals[,i]
+  for(j in 1:n){
+    kres[[i]][,j+1] <- res[[j]]$kres[,i]
+    metricres[[i]][,j] <- res[[j]]$mets[,i]
+  }
+} 
+
+save('kres', file = 'kres_cluster_RRL.RData')
+save('metricres', file= 'metricres_cluster_RRL.RData')
 
 
 # G Function --------------------------------------------------------------

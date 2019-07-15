@@ -233,6 +233,13 @@ save(ktol, file = "ktolerancedata.RData")
 
 # Analyze p-value data ----------------------------------------------------
 load("~/Research/K_cluster_series/190703_ktolerancedata.RData")
+ktol.60 <- ktol
+load("~/Research/K_cluster_series/190703_ktolerancedata_40.RData")
+ktol.40 <- ktol
+rm(ktol)
+
+#which to analyze
+ktol <- ktol.60
 
 pic <- ktol[[length(ktol)-1]]
 den <- ktol[[length(ktol)]]
@@ -288,43 +295,69 @@ for(j in 1:length(p.dclf)){
 #TO PLOT
 p.toplot <- p.toplot.dclf
 
-p.toplot.mean <- lapply(p.toplot, function(x){apply(x, 1, mean, na.rm = TRUE)})
-p.toplot.sd <- lapply(p.toplot, function(x){apply(x, 1, function(x){sd(x, na.rm=TRUE)/sqrt(sum(!is.na(x)))})})
+p.toplot.mean.pic <- lapply(p.toplot, function(x){apply(x, 1, mean, na.rm = TRUE)})
+#transform to percent of type A points in clusters
+p.toplot.mean <- lapply(p.toplot.mean.pic, function(x){sapply(1:length(den), function(y){den[y]*x[y]})})
 
-# OR, other averaging method:
-library(abind)
-all.matrix <- abind(p.dclf, along = 3)
-p.mean <- apply(all.matrix, c(1,2), mean, na.rm = TRUE)
-p.sd <- apply(all.matrix, c(1,2), sd, na.rm = TRUE)
+p.toplot.sd.pic <- lapply(p.toplot, function(x){apply(x, 1, function(x){sd(x, na.rm=TRUE)/sqrt(sum(!is.na(x)))})})
+p.toplot.sd <- lapply(p.toplot.sd.pic, function(x){sapply(1:length(den), function(y){den[y]*x[y]})})
 
-p.toplot <- list()
-for(i in 1:length(p.vals)){
-  p.check <- p.vals[i]
-  p.tf <- p.mean < p.check
-  p.ind <- apply(p.tf, 2, function(x){
-    if(!any(x == TRUE) | !any(x == FALSE)){
-      return(NA)
-    }else{
-      return(match(TRUE, x))
-    }})
-  
-  p.toplot[[i]] <- pic[p.ind]
-}
+#
+#p.toplot.mean[[2]][2] <- 0.13
 
+#p.toplot.mean[[1]] <- p.toplot.mean[[1]] - (1:length(den))*0.001
+#p.toplot.mean[[2]] <- p.toplot.mean[[2]] - (1:length(den))*0.001
 
+# OR, other averaging method: #
+# library(abind)
+# all.matrix <- abind(p.dclf, along = 3)
+# p.mean <- apply(all.matrix, c(1,2), mean, na.rm = TRUE)
+# p.sd <- apply(all.matrix, c(1,2), sd, na.rm = TRUE)
+# 
+# p.toplot <- list()
+# for(i in 1:length(p.vals)){
+#   p.check <- p.vals[i]
+#   p.tf <- p.mean < p.check
+#   p.ind <- apply(p.tf, 2, function(x){
+#     if(!any(x == TRUE) | !any(x == FALSE)){
+#       return(NA)
+#     }else{
+#       return(match(TRUE, x))
+#     }})
+#   
+#   p.toplot[[i]] <- pic[p.ind]
+# }
+# #
+
+a40 <- p.toplot.mean
+b40 <- p.toplot.sd
+
+a60 <- p.toplot.mean
+b60 <- p.toplot.sd
+
+p.toplot.mean <- a40
+p.toplot.sd <- b40
+den <- seq(0.2,1,by=0.1)
+
+# Plot the stuff
 plotpts <- 2:length(den)
-cols <- c('red', 'blue')
-plot(100*den[plotpts], 100*p.toplot.mean[[1]][plotpts], col = cols[1], pch = 19, xlab = 'Intra-cluster concentration', ylab = '% of points in clusters',
-     ylim = c(0,20))
-lines(100*den[plotpts], 100*p.toplot.mean[[1]][plotpts], col = cols[1], lwd = 2)
+#choose one
+cols <- c('red', 'red')
+cols <- c('blue', 'blue')
+pchs <- c(19, 17)
+par(mar = c(4, 4, 1, 1))
+#POINTS
+points(100*den[plotpts], 100*p.toplot.mean[[1]][plotpts], col = cols[1], pch = pchs[1], xlab = 'Intra-cluster concentration', ylab = '% of points in clusters',
+     ylim = c(0,14))
+lines(100*den[plotpts], 100*p.toplot.mean[[1]][plotpts], col = cols[1], lwd = 1.5)
 arrows(100*den[plotpts], 100*(p.toplot.mean[[1]][plotpts] - p.toplot.sd[[1]][plotpts]), 100*den[plotpts], 100*(p.toplot.mean[[1]][plotpts] + p.toplot.sd[[1]][plotpts]), 
        length=0.05, angle=90, code=3, col = cols[1])
 for(i in 2:length(p.toplot.mean)){
-  points(100*den[plotpts], 100*p.toplot.mean[[i]][plotpts], col = cols[i], pch = 19)
-  lines(100*den[plotpts], 100*p.toplot.mean[[i]][plotpts], col = cols[i], lwd = 2)
+  points(100*den[plotpts], 100*p.toplot.mean[[i]][plotpts], col = cols[i], pch = pchs[i])
+  lines(100*den[plotpts], 100*p.toplot.mean[[i]][plotpts], col = cols[i], lwd = 1.5)
   arrows(100*den[plotpts], 100*(p.toplot.mean[[i]][plotpts] - p.toplot.sd[[i]][plotpts]), 100*den[plotpts], 100*(p.toplot.mean[[i]][plotpts] + p.toplot.sd[[i]][plotpts]), 
          length=0.05, angle=90, code=3, col = cols[i])
 }
-legend(80, 20, legend = sapply(p.vals, toString), col = cols, lwd = 2, title = "p-value", text.width = 10)
+legend(80, 13, legend = sapply(p.vals, toString), col = 'black', pch = pchs ,title = "p-value", text.width = 10)
 
 
