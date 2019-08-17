@@ -11,18 +11,18 @@ source("C:/Users/galen/Documents/Research/oled-spatstat-analysis/rpoint3_extende
 
 
 # Different data sets to test on
-load("imap3d.diff_cold.RData")
+load("~/Research/apt_data_analysis/imap3d.diff_cold.RData")
 cold.map <- imap3d.diff
-load("imap3d.diff_warm.RData")
+load("~/Research/apt_data_analysis/imap3d.diff_warm.RData")
 warm.map <- imap3d.diff
 rm(imap3d.diff)
-load("apt.pp3.60cube.irppy.cold.RData")
-load("apt.pp3.60cube.irppy.warm.RData")
+load("~/Research/apt_data_analysis/apt.pp3.60cube.irppy.cold.RData")
+load("~/Research/apt_data_analysis/apt.pp3.60cube.irppy.warm.RData")
 ir.cold <- apt.pp3.60cube.irppy.cold
 ir.warm <- apt.pp3.60cube.irppy.warm
 rm(apt.pp3.60cube.irppy.cold, apt.pp3.60cube.irppy.warm)
-load("apt.pp3.60cube.sup.cold.RData")
-load("apt.pp3.60cube.sup.warm.RData")
+load("~/Research/apt_data_analysis/apt.pp3.60cube.sup.cold.RData")
+load("~/Research/apt_data_analysis/apt.pp3.60cube.sup.warm.RData")
 sup.cold <- apt.pp3.60cube.sup.cold
 sup.warm <- apt.pp3.60cube.sup.warm
 rm(apt.pp3.60cube.sup.cold, apt.pp3.60cube.sup.warm)
@@ -46,33 +46,33 @@ k <- seq(20,400, kby)
 
 # intensity map cold
 t1 <- Sys.time()
-est.cold <- nndensity.pp3(X.cold, k, grid.size, grid.size, grid.size, dz, par = TRUE, cores = 8)
+est.cold <- nndensity(X.cold, k, grid.size, grid.size, grid.size, dz, par = TRUE, cores = 8)
 t2 <- Sys.time()
 print(t2-t1)
 
 #intensity map warm
 t1 <- Sys.time()
-est.warm <- nndensity.pp3(X.warm, k, grid.size, grid.size, grid.size, dz, par = TRUE, cores = 8)
+est.warm <- nndensity(X.warm, k, grid.size, grid.size, grid.size, dz, par = TRUE, cores = 8)
 t2 <- Sys.time()
 print(t2-t1)
 
 dz <- 5
 #actual apt data cold
 t1 <- Sys.time()
-est.cold.real <- nndensity.pp3(ir.cold, k, grid.size, grid.size, grid.size, dz, par = TRUE, cores = 8)
+est.cold.real <- nndensity(ir.cold, k, grid.size, grid.size, grid.size, dz, par = TRUE, cores = 8)
 t2 <- Sys.time()
 print(t2-t1)
 
 dz <- 5
 #actual apt data warm
 t1 <- Sys.time()
-est.warm.real <- nndensity.pp3(ir.warm, k, grid.size, grid.size, grid.size, dz, par = TRUE, cores = 8)
+est.warm.real <- nndensity(ir.warm, k, grid.size, grid.size, grid.size, dz, par = TRUE, cores = 8)
 t2 <- Sys.time()
 print(t2-t1)
 
 #simulated cluster
 t1 <- Sys.time()
-est.sim <- nndensity.pp3(X.sim, k, grid.size, grid.size, grid.size, dz, par = TRUE, cores = 8)
+est.sim <- nndensity(X.sim, k, grid.size, grid.size, grid.size, dz, par = TRUE, cores = 8)
 t2 <- Sys.time()
 print(t2-t1)
 
@@ -112,7 +112,7 @@ contourplot <- function(estimate, kind, new = FALSE, ...){
 kind <- 20
 cont <- 15
 contourplot(est.cold, kind, cont = c(cont), alphavec = c(0.3), colors = c('blue'), main = paste("nn",toString(k[kind]),sep = ""))
-contourplot(est.warm, kind, new = TRUE, cont = c(cont), alphavec = c(0.3), colors = c('red'), main = paste("nn",toString(k[kind]),sep = ""))
+contourplot(est.warm.real, kind, new = TRUE, cont = c(cont), alphavec = c(0.3), colors = c('red'), main = paste("nn",toString(k[kind]),sep = ""))
 
 # now we need to go through and check the performance at different values of k
 actual.cold <- as.vector(cold.map.scaled$estimate)

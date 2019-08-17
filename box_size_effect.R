@@ -160,25 +160,14 @@ cluster.sizes <- list(c(15,15,15),
 toSub <- vector("list",length(cluster.sizes))
 env.r <- vector("list",length(cluster.sizes))
 for(i in 1:length(cluster.sizes)){
-  if(i == 5){
-    toSub[[i]] <- 'placeholder'
-    env.r[[i]] <- 'placeholder'
-    
-    #toSub[[i]] <- fread('Z:/Galen/Box\ Size\ RRLs/RRLtoSub11.csv', drop=1)
-    #env.r[[i]] <- fread('Z:/Galen/Box\ Size\ RRLs/RRL11.csv', select=2)
-    
-    #HPC
-    #toSub[[i]] <- fread('~/scratch/Rcode/RRLs/RRLtoSub11.csv', drop=1)
-    #env.r[[i]] <- fread('~/scratch/Rcode/RRLs/RRL11.csv', select=2)
-    
-    next
-  }
-  toSub[[i]] <- fread(paste('Z:/Galen/Box\ Size\ RRLs/RRLtoSub',toString(i),'.csv',sep=''), drop=1)
-  env.r[[i]] <- fread(paste('Z:/Galen/Box\ Size\ RRLs/RRL',toString(i),'.csv',sep=''), select=2)
+  toSub[[i]] <- fread(paste('Z:/Galen/Box\ Size\ RRLs/New\ RRLs/RRLtoSub',toString(i),'.csv',sep=''), drop=1)
+  env.r[[i]] <- fread(paste('Z:/Galen/Box\ Size\ RRLs/New\ RRLs/RRL',toString(i),'.csv',sep=''), select=2)
+  
+  print(paste(toString(i),'/6',sep=''))
   
   #HPC
-  #toSub[[i]] <- fread(paste('~/scratch/Rcode/RRLs/RRLtoSub',toString(i),'.csv',sep=''), drop=1)
-  #env.r[[i]] <- fread(paste('~/scratch/Rcode/RRLs/RRL',toString(i),'.csv',sep=''), select=2)
+  #toSub[[i]] <- fread(paste('~/scratch/Rcode/newRRLs/RRLtoSub',toString(i),'.csv',sep=''), drop=1)
+  #env.r[[i]] <- fread(paste('~/scratch/Rcode/newRRLs/RRL',toString(i),'.csv',sep=''), select=2)
 }
 
 cl <- makePSOCKcluster(detectCores())
@@ -186,7 +175,6 @@ clusterEvalQ(cl, c(library(rapt)))
 clusterExport(cl, c('cluster.sizes','toSub','env.r','under.nums','over.nums'))
 
 
-#loop
 res <- parLapply(cl, 1:n, function(i){
   #upload
   under <- read.rcp(paste('~/Research/point_patterns/Final/FinalConfig',toString(under.nums[i]),sep=""),paste('~/Research/point_patterns/Final/system',toString(under.nums[i]),sep=""),scaleUp = TRUE,newRadius = 0.5)
@@ -196,34 +184,35 @@ res <- parLapply(cl, 1:n, function(i){
   #under <- read.rcp(paste('~/scratch/Rcode/RCP/FinalConfig',toString(under.nums[i]),sep=""),paste('~/scratch/Rcode/RCP/system',toString(under.nums[i]),sep=""),scaleUp = TRUE,newRadius = 0.5)
   #over <- read.rcp(paste('~/scratch/Rcode/RCP/FinalConfig',toString(over.nums[i]),sep=""),paste('~/scratch/Rcode/RCP/system',toString(over.nums[i]),sep=""),scaleUp = TRUE,newRadius = 0.5)
   
-  
   under.big <- stitch.size(under, boxSize = c(60,60,60))
   over.big <- stitch.size(over, boxSize = c(60,60,60))
   #make cluster
   cluster <- makecluster(under.big, over.big, 0.5, 0.5, type="cr", speed="superfast", cr=3, den=0.5)
   
-  rvals <- matrix(NA, nrow = 200, ncol = length(cluster.sizes))
-  kres <- matrix(NA, nrow = 200, ncol = length(cluster.sizes))
+  rvals <- matrix(NA, nrow = 300, ncol = length(cluster.sizes))
+  kres <- matrix(NA, nrow = 300, ncol = length(cluster.sizes))
   metricres <- matrix(NA, nrow = 5, ncol = length(cluster.sizes))
   
   #test on each of the different cluster sizes below here
   for(j in(1:length(cluster.sizes))){
-    if(j == 5){
-      next
-    }
-    
+
     #cut it down to size
     cluster.cut <- subSquare(cluster[[1]], cluster.sizes[[j]])
     
     #test
-    result <- anomK3est(cluster.cut, toSub[[j]], max(env.r[[j]]), 200, correction="trans")
+    result <- anomK3est(cluster.cut, toSub[[j]], max(env.r[[j]]), 300, correction="trans")
     rvals[,j] <- result$r
     kres[,j] <- result$trans
     
-    rvals.new <- result$r[10:length(result$r)]
-    tvals.new <- result$trans[10:length(result$trans)]
+    ind.start <- which(result$trans != 0)[1] + 30
     
-    metricres[,j] <- unlist(k3metrics(rvals.new, tvals.new, toplot = FALSE))
+    rvals.new <- result$r[ind.start:length(result$r)]
+    tvals.new <- result$trans[ind.start:length(result$trans)]
+    
+    plot(result)
+    points(rvals.new, tvals.new, col = 'red')
+    
+    metricres[,j] <- unlist(k3metrics(rvals.new, tvals.new, toplot = TRUE))
     
     rm(cluster.cut, result, rvals.new, tvals.new)
     gc()
@@ -241,7 +230,7 @@ stopCluster(cl)
 kres <- list()
 metricres <- list()
 for(i in 1:length(cluster.sizes)){
-  kres[[i]] <- matrix(NA, nrow = 200, ncol = n+1)
+  kres[[i]] <- matrix(NA, nrow = 300, ncol = n+1)
   metricres[[i]] <- matrix(NA, nrow = 5, ncol = n)
   
   kres[[i]][,1] <- res[[1]]$rvals[,i]

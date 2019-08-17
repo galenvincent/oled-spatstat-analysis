@@ -455,5 +455,32 @@ plot(x2,rs[1,6:10],pch = 6, col="red",xlab = "Box Height (h) [nm]", ylab = "Radi
 
 
 #### Metric SD vs box size ####
-load('~/Research/box_size_effect/...')
-load('~/Research/box_size_effect/...')
+rm(list = ls())
+gc()
+
+load('~/Research/box_size_effect/metricres_cluster_RRL.RData')
+load('~/Research/box_size_effect/kres_cluster_RRL.RData')
+
+mres.mean <- matrix(unlist(lapply(metricres, apply, 1, mean, na.rm = TRUE)), nrow = 6, byrow = TRUE)
+mres.sd <- matrix(unlist(lapply(metricres, apply, 1, sd, na.rm = TRUE)), nrow = 6, byrow = TRUE)
+mres.90 <- matrix(unlist(lapply(metricres, apply, 1, function(x){
+  a <- sort(x)
+  inds <- c(25, 475)
+  b <- a[inds]
+  return(abs(diff(b)))
+})), nrow = 6, byrow = TRUE)
+
+mres.perc <- (mres.sd/abs(mres.mean))*100
+
+box.sizes <- c(15, 20, 30, 40, 50, 60)
+
+par(mgp = c(2.5, 1, 0), mar = c(4, 4, 2, 2))
+col <- c('black','red','blue','forestgreen','orange')
+plot(box.sizes, mres.90[,1], xlim = c(15, 60), ylim = c(0, max(mres.90)), type = 'n',
+     xlab = 'Cube Side Length (arb.)', ylab = '90% Interval Width')
+for(i in 1:5){
+  points(box.sizes, mres.90[,i], col = col[i], pch = 19)
+  lines(box.sizes, mres.90[,i], col = col[i], lwd = 2)
+}
+legend(40, 5, legend = c('Km','Rm','Rdm','Rddm','Kdm'), col = col, lwd = 3, bty = 'n')
+

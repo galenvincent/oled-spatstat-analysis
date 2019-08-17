@@ -5,7 +5,7 @@ library(caret)
 library(parallel)
 library(doParallel)
 library(ggbiplot)
-
+library(scales)
 
 #### Grid Data ####
 dep <- fread("~/Research/ML/190216_pca.csv",select = c(1:4))
@@ -99,8 +99,8 @@ data.pca.vals <- predict(pp, met)
 
 
 #### Full raw data ------------------------------------------------------
-load('Z:/Galen/Machine\ Learning\ Files/190709_params.RData')
-load('Z:/Galen/Machine\ Learning\ Files/190709_sim.res.RData')
+load('Z:/Galen/Machine\ Learning\ Files/190710_params.RData')
+load('Z:/Galen/Machine\ Learning\ Files/190710_sim.res.RData')
 
 data.unlisted <- matrix(NA, nrow = length(sim.res)*nrow(sim.res[[1]]), ncol = 9)
 
@@ -118,7 +118,8 @@ names(data.unlisted) <- c("r","den","rb","gb","Km","Rm","Rdm","Rddm","Kdm")
 data.unlisted$rw <- (data.unlisted$r^4 + 6* (data.unlisted$r^2) *(data.unlisted$rb * data.unlisted$r)^2 + 3 *(data.unlisted$rb * data.unlisted$r)^4)/(data.unlisted$r^3 + 3*data.unlisted$r*(data.unlisted$rb * data.unlisted$r)^2)
 data.unlisted$sigma <- data.unlisted$rb * data.unlisted$r
 
-test.ind <- sample(1:nrow(data.unlisted), 0.2*nrow(data.unlisted))
+test.ind <- sample(1:nrow(data.unlisted), 0.8*nrow(data.unlisted))
+
 data.test <- data.unlisted[test.ind,]
 data.train <- data.unlisted[-test.ind,]
 
@@ -182,14 +183,14 @@ data$rw <- (data$r^4 + 6* (data$r^2) *(data$rb * data$r)^2 + 3 *(data$rb * data$
 data$sigma <- data$rb * data$r
 
 
-p <- 0.75
+p <- 0.5
 samp <- sample(1:nrow(dep),round(nrow(dep)*p),replace = FALSE)
 
 trainSet <- data[samp,]
 testSet <- data[-samp,] 
 
 
-out <- 'r'
+out <- 'rw'
 #predictors <- c("Km","Rm","Rdm","Rddm","Kdm")
 predictors <- c("PC1","PC2","PC3","PC4","PC5")
 
@@ -207,7 +208,8 @@ models[[3]] <- train(trainSet[,predictors], trainSet[,out],
                trControl = trainControl("cv", number = 10),
                tuneLength = 10)
 
-models[[4]] <- train(trainSet[,predictors], trainSet[,out], method = "brnn", trControl = trainControl("cv", number = 10))
+models[[4]] <- train(trainSet[,predictors], trainSet[,out], method = "brnn", trControl = trainControl("cv", number = 10),
+                     tuneGrid = data.frame("neurons" = c(1, 3, 5, 7)))
 
 # cl <- makeCluster(detectCores())
 # registerDoParallel(cl)
@@ -362,7 +364,7 @@ load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_norb_4met_den.RData')
 load('Z:/Galen/Machine\ Learning\ Files/Models/ml.models_norb_2met_den.RData')
 
 predictors <- sapply(1:length(mets),function(x){paste('PC',toString(x),sep = '')})
-out <- 'den'
+out <- 'r'
 
 test <- data.frame(test.set.norb, test.pca.norb)
 
@@ -386,3 +388,5 @@ plot(test[,out], a, main = models[[i]]$method, xlab = "Input Simulation Value", 
 abline(0,1, col = "red", lwd = 1.25)
 legend(1.8, 10, "True Value = Predicted Value", col = "red", lty = 1, lwd = 2,bty = "n")
 #
+
+
