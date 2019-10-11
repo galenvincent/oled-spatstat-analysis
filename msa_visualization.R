@@ -42,29 +42,51 @@ pp3.df <- data.frame(x = pp3.full$data$x, y = pp3.full$data$y, z = pp3.full$data
 pp3.df.zn <- filter(pp3.df, mark == 'Zn1')
 pp3.df.mg <- filter(pp3.df, mark == 'Mg1')
 pp3.df.al <- filter(pp3.df, mark == 'Al1')
+pp3.df.aggregates <- filter(pp3.df, mark == 'Mg1' | mark == 'Zn1' )
+pp3.aggregates <- subset(pp3.full, marks == 'Mg1' | marks == 'Zn1' )
 
-n <- 5
+
+dmax.to.plot <- c(1.1, 1.4, 1.7, 2.0)
+nmin.to.plot <- c(5, 10, 15, 20)
+inds.to.do <- which(round(params[,2],1) %in% dmax.to.plot)
+n <- length(inds.to.do)
 
 data.list <- list()
-for(i in 1:n){
+cnt <- 1
+for(i in inds.to.do){
   if(is.na(msa.sweep[[i]])){
-    data.list[[i]] <- data.frame(x = c(0), y = c(0), z = c(0), mark = '', col.mark = '')
+    data.list[[cnt]] <- data.frame(x = c(0), y = c(0), z = c(0), mark = '', col.mark = '')
   }else{
-    data.list[[i]] <- pp3.df[unlist(msa.sweep[[i]]$A),]
+    data.list[[cnt]] <- pp3.df[unlist(msa.sweep[[i]]$A),]
     nums <- sample(1:length(msa.sweep[[i]]$A), length(msa.sweep[[i]]$A))
-    data.list[[i]]$col.mark <- rep(nums, sapply(msa.sweep[[i]]$A, length))
+    data.list[[cnt]]$col.mark <- rep(nums, sapply(msa.sweep[[i]]$A, length))
   }
+  cnt <- cnt + 1
 }
 
 dropdowns <- list()
+dropdowns[[1]] <- list(label = 'Zn+Mg',
+                       method = 'update',
+                       args = list(list(visible = rep(FALSE, n+1))))
+dropdowns[[1]]$args[[1]]$visible[1] <- TRUE
 for(i in 1:n){
-  dropdowns[[i]] <- list(label = paste('dmax: ', toString(params[i,2]), ', Nmin: ', toString(params[i,1]), sep = ''),
+  dropdowns[[i+1]] <- list(label = paste('dmax: ', toString(params[inds.to.do[i],2]), ', Nmin: ', toString(params[inds.to.do[i],1]), sep = ''),
                          method = 'update',
-                         args = list(list(visible = rep(FALSE, n))))
-  dropdowns[[i]]$args[[1]]$visible[i] <- TRUE
+                         args = list(list(visible = rep(FALSE, n+1))))
+  #Show background
+  dropdowns[[i+1]]$args[[1]]$visible[1] <- TRUE
+  
+  #Highlight clusters
+  dropdowns[[i+1]]$args[[1]]$visible[i+1] <- TRUE
 }
 
 p <- plot_ly()
+
+p <- add_trace(p, type = 'scatter3d', mode = 'markers', data = pp3.df.aggregates,
+               x = ~x, y = ~y, z = ~z,
+               marker = list(opacity = 0.1, 
+                             size = 3,
+                             color = 'gray'))
 for(i in 1:n){
   p <- add_trace(p, type = 'scatter3d', mode = 'markers', data = data.list[[i]],
                    x = ~x, y = ~y, z = ~z,
@@ -88,59 +110,16 @@ p <- layout(p,
                 #x = 1, 
                 #y = 1,
                 active = 0,
+                showactive = TRUE,
                 buttons = dropdowns
               )))
 
 p
 
 
+library(ks)
+imap3d <- kde(coords(pp3.aggregates), gridsize = 100, xmin = c(-20.2, -20.2, -20.2), xmax = c(20.2, 20.2, 20.2))
+plot(imap3d, cont = c(5), alphavec = c(0.25))
+plot3d.pp3(pp3.aggregates)
 
-# Visualize
-plot_ly() %>%
-  #add_markers(data = pp3.df.al, x = ~x, y = ~y, z = ~z,
-  #            marker = list(color = 'black', opacity = 0.1, size = 3),
-  #            name = 'Al') %>%
-  add_markers(data = pp3.df.zn, x = ~x, y = ~y, z = ~z,
-              marker = list(color = 'red', opacity = 0.1, size = 3),
-              name = 'Zn') %>%
-  add_markers(data = pp3.df.mg, x = ~x, y = ~y, z = ~z,
-              marker = list(color = 'blue', opacity = 0.1, size = 3),
-              name = 'Mg') %>%
-  layout(
-    scene = list(xaxis = list(range = c(-20.2, 20.2)),
-                 yaxis = list(range = c(-20.2, 20.2)),
-                 zaxis = list(range = c(-20.2, 20.2))),
-    title = 'Interactive ZnMg Plot',
-    updatemenus = list(
-      list(
-        #type = 'buttons',
-        #direction = 'right',
-        #xanchor = 'right',
-        #yanchor = 'top',
-        #x = 1,
-        #y = 1,
-        active = 2,
-        buttons = list(
-          # list(
-          #   label = 'Al',
-          #   method = 'update',
-          #   args = list(list(visible = c(TRUE, FALSE, FALSE)))
-          # ),
-          list(
-            label = 'Zn',
-            method = 'update',
-            args = list(list(visible = c(TRUE, FALSE)))
-          ),
-          list(
-            label = 'Mg',
-            method = 'update',
-            args = list(list(visible = c(FALSE, TRUE)))
-          ),
-          list(
-            label = 'Zn+Mg',
-            method = 'update',
-            args = list(list(visible = c(TRUE, TRUE)))
-          )
-        )
-      ))
-  )
+
