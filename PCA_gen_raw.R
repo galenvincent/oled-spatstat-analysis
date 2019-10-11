@@ -12,8 +12,8 @@ gc()
 cluster.size <- c(60,60,60)
 
 # Number of random simulations desired
-nrand <- 3 # Number of random parameters to generate
-nclust <- 2 # Number of iterations to test each parameter set on
+nrand <- 2 # Number of random parameters to generate
+nclust <- 10 # Number of iterations to test each parameter set on
 s <- 104 # random seed (change between runs)
 
 #add in the random values
@@ -59,7 +59,7 @@ clusterEvalQ(cl, library(rapt))
 clusterEvalQ(cl, library(zoo))
 
 t1 <- Sys.time()
-outtemp <- parLapply(cl, 1:nclust, kseries2, nclust, params, maxr, nr, toSub, verbose = FALSE)
+outtemp <- parLapply(cl, 1:nclust, kseries2, nclust, params, maxr, nr, toSub, pcp = 0.051, verbose = FALSE)
 t2 <- Sys.time()
 print(t2-t1)
 

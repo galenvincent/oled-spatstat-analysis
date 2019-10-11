@@ -779,8 +779,8 @@ data.unlisted <- data.unlisted[complete.cases(data.unlisted),]
 
 # Select metrics here
 mets <- c("Km","Rm","Rdm","Rddm","Kdm")
-mets <- c("Km","Rm","Rdm","Kdm")
-mets <- c("Km","Rm")
+#mets <- c("Km","Rm","Rdm","Kdm")
+#mets <- c("Km","Rm")
 pp.train <- preProcess(data.unlisted[,mets], method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
 
 # Upload test data
@@ -849,9 +849,16 @@ data.unlisted <- data.unlisted[complete.cases(data.unlisted),]
 
 # Select metrics here
 mets <- c("Km","Rm","Rdm","Rddm","Kdm")
-mets <- c("Km","Rm","Rdm","Kdm")
-mets <- c("Km","Rm")
+#mets <- c("Km","Rm","Rdm","Kdm")
+#mets <- c("Km","Rm")
 pp.train <- preProcess(data.unlisted[,mets], method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
+
+
+# SCALE DATA BY THE MEAN AND SD OF THE TRAINING SET (if needed)!!!!
+data.scaled <- as.data.frame(apply(data.unlisted[,mets], 2, function(x){(x - mean(x))/sd(x)}))
+names(data.scaled) <- c("sKm","sRm","sRdm","sRddm","sKdm")
+
+train <- data.frame(data.unlisted, data.scaled)
 
 # Upload test data
 load('Z:/Galen/Machine\ Learning\ Files/Test\ Data/ml.test.results.RData')
@@ -861,8 +868,15 @@ test.set <- test.set[complete.cases(test.set),]
 test.set$rw <- (test.set$r^4 + 6* (test.set$r^2) *(test.set$rb * test.set$r)^2 + 3 *(test.set$rb * test.set$r)^4)/(test.set$r^3 + 3*test.set$r*(test.set$rb * test.set$r)^2)
 test.set$sigma <- test.set$rb * test.set$r
 
+# SCALE TEST DATA (if needed)!!!!
+test.scaled <- as.data.frame(apply(test.set[,mets], 2, function(x){(x - mean(x))/sd(x)}))
+names(test.scaled) <- c("sKm","sRm","sRdm","sRddm","sKdm")
+
 test.pca <- predict(pp.train, test.set[,mets])
-test <- data.frame(test.set, test.pca)
+test <- data.frame(test.set, test.scaled, test.pca)
+
+
+
 
 # Upload model of choice
 load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rw.RData')
@@ -873,9 +887,17 @@ load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_de
 load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_4met_den.RData')
 load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_2met_den.RData')
 
+load('Z:/Galen/Machine\ Learning\ Files/no\ PCA\ test/ml.models_rw_noPCA.RData')
+load('Z:/Galen/Machine\ Learning\ Files/no\ PCA\ test/ml.models_den_noPCA.RData')
+
+load('Z:/Galen/Machine\ Learning\ Files/no\ PCA\ test/ml.models_rw_noPCA_scaled.RData')
+load('Z:/Galen/Machine\ Learning\ Files/no\ PCA\ test/ml.models_den_noPCA_scaled.RData')
 
 predictors <- sapply(1:length(mets),function(x){paste('PC',toString(x),sep = '')})
+predictors <- mets
+predictors <- c("sKm","sRm","sRdm","sRddm","sKdm")
 out <- 'rw'
+
 
 # Test models
 toRound <- 6
@@ -893,6 +915,7 @@ rm(models)
 gc()
 
 rm(pp.train, test)
+
 
 # Residual analysis and plots ---------------------------------------------
 pred.full <- extractPrediction(models[3], testX = test[,predictors], testY = test[,out])
@@ -932,8 +955,7 @@ for(i in 1:length(percs)){
            col = 'red', lwd = 1.5)
   #text(0, tail(vals[[i+1]]$error, n = 1) + 1.25, paste(toString(percs[i]), '% of data'), pos = 4, cex = 0.75, col = 'red')
 }
-q <- (tail(ind, n = 1 )+1):n
-ind.last <- sample(q, length(q)*downsample.ratio)
+ind.last <- (tail(ind, n = 1 )+1):n
 points(vals$all$perc[ind.last], vals$all$error[ind.last], col = 'black', pch = 16, cex = 1)
 
 # 1:1 points envelope plot
@@ -950,8 +972,7 @@ for(i in 1:length(percs)){
   sample.inds <- sample(1:n.i, round(n.i*downsample.ratio))
   points(vals.subed[[i+1]]$obs[sample.inds], vals.subed[[i+1]]$pred[sample.inds], pch = 16, col = cols[i], cex = 0.35)
 }
-q <- (tail(ind, n =1 )+1):n
-ind.last <- sample(q, length(q)*downsample.ratio)
+ind.last <- (tail(ind, n =1 )+1):n
 points(vals.subed$all$obs[ind.last], vals.subed$all$pred[ind.last], col = 'black', pch = 16, cex = 0.35)
 
 leg <- rep('', length(percs)+1)
@@ -962,6 +983,22 @@ leg[length(leg)] <- '100%'
 
 legend(.2, 1, legend = leg, col = c(cols, 'black'), pch = 16, cex = 1, title = 'Sorted Data Percentile:', bty = 'n')
 abline(0, 1, col = 'black', lty = 2, lwd = 1.5)
+
+#### Error as a function of parameter ####
+pred.full <- predict(models$brnn, newdata = test[,predictors])
+diff <- test[,out] - pred.full
+diff.perc <- diff*100/test[,out]
+
+param <- 'r'
+lmod <- lm(abs(diff.perc) ~ test[,param])
+par(mgp = c(2.25, 1, 0), mar = c(3.5, 3.5, 2, 2))
+plot(test[ ,param], abs(diff.perc), xlab = param, ylab = 'Percent Error')
+abline(lmod, col = 'red', lwd = 2, lty = 2)
+text(2, 50, 
+     paste('y = ', toString(round(lmod$coefficients[1], 3)), ' + ', toString(round(lmod$coefficients[2], 3)), 'x', sep = ''),
+     pos = 4)
+
+cor(test[,param], abs(diff.perc))
 
 
 

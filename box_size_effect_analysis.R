@@ -26,6 +26,7 @@ for(i in (1:10)){
   plot.small[,i] <- sortedtVals[,ind.small]
   rvals[,i] <- as.numeric(rtemp$V1)
   
+  print(i)
   rm(rtemp,tvals,nTests,prange,sortedtVals,ind.big,ind.small)
   gc()
 }
@@ -91,18 +92,18 @@ plot.small.clust <- sortedtVals[,ind.small]
 #envelopes
 newcolors <- c(color[1], color[2], color[3], color[4], color[1], "red")
 
-par(mgp = c(2.5,1,0),mar = c(4,4.5,3.5,2.5))
-plot(rvals[,1], plot.big[,1], type="n", main="99.9% AI Envelopes vs Box Size",
+par(mgp = c(2.5,1,0),mar = c(4,4.5,2,2))
+plot(rvals[,1], plot.big[,1], type="n",
      xlab="r (arb.)", ylab= 'T(r)',
-     ylim=c(-8,8), xlim=xlim,
+     ylim=c(-11,7), xlim=c(0,50),
      cex.lab = 1.75, cex.main = 1.75, cex.axis = 1.25)
 for(i in c(2, 4, 5)){
   a <- c(rvals[,i], rev(rvals[,i]))
   b <- c(plot.big[,i], rev(plot.small[,i]))
-  polygon(a, b, col=alpha(newcolors[i], 0.85), border="black", lwd=1.5)
+  polygon(a, b, col=alpha(newcolors[i], 0.75), border="black", lwd=1.5)
 }
-lines(rvals[,9], plot.big[,9], col = newcolors[6], lwd = 2, lty = 2)
-lines(rvals[,9], plot.small[,9], col = newcolors[6], lwd = 2, lty = 2)
+#lines(rvals[,9], plot.big[,9], col = newcolors[6], lwd = 2, lty = 2)
+#lines(rvals[,9], plot.small[,9], col = newcolors[6], lwd = 2, lty = 2)
 
 lines(rvals[,5], plot.big.clust, col = 'black', lwd = 2)
 lines(rvals[,5], plot.small.clust, col = 'black', lwd = 2)
@@ -114,7 +115,7 @@ legend(10,8.5, legend = c("20x20x20",
                       "40x40x40",
                       "60x60x60"),
        col=c(newcolors[c(2, 4, 5)]), lty=c(1, 1, 1), lwd = c(15, 15, 15), bty="n", cex = 1.25)
-legend(10,-5, legend = "30x60x60", col = newcolors[6], lty = 2, lwd = 2, bty = "n", cex = 1.25)
+#legend(10,-5, legend = "30x60x60", col = newcolors[6], lty = 2, lwd = 2, bty = "n", cex = 1.25)
 legend(10,-6.5, legend = "60x60x60 clusters", col = 'black', lty = 1, lwd = 2, bty = 'n', cex = 1.25)
 
 #envelope width as f_n of box size

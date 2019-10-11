@@ -13,9 +13,9 @@ plot3d.pp3(morph.pp3.2, col = 'red', add = TRUE)
 
 #re-scale morphology
 scale.factors <- c(1/60, 1/60, 1/60)
-morph.pp3.scaled <- pp3(morph$x*scale.factors[1], 
-                        morph$y*scale.factors[2], 
-                        morph$z*scale.factors[3], 
+morph.pp3.scaled <- pp3(morph$x*scale.factors[1],
+                        morph$y*scale.factors[2],
+                        morph$z*scale.factors[3],
                         box3(c(0,1), c(0,1), c(0,1)), marks = morph$mark)
 
 # re-assign to poisson points

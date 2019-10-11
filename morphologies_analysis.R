@@ -44,13 +44,14 @@ save(sim.res, file = 'sim.res.RData')
 
 
 # From HPC
-load('sim.res.RData')
+load('sim.res.gyroid.RData')
 lam <- sim.res$lamellar
 rod <- sim.res$rods
 gb <- sim.res$gb
-gyr <- sim.res$gyroid
+gyr <- sim.res[[1]]
 
-envPlot(lam, ylim = c(-0.15, 0.15))
-envPlot(rod, ylim = c(-0.15, 0.15))
-envPlot(gb, ylim = c(-0.15, 0.15))
-envPlot(gyr, ylim = c(-0.15, 0.15))
+par(mar = c(4, 4.5, 2, 2), mgp = c(2.25, 1, 0))
+envPlot(lam, ylim = c(-0.15, 0.15), percentiles = c(0.99, 0.90, 0.75))
+envPlot(rod, ylim = c(-0.15, 0.15), percentiles = c(0.99, 0.90, 0.75))
+envPlot(gb, ylim = c(-0.15, 0.15), percentiles = c(0.99, 0.90, 0.75))
+envPlot(gyr, ylim = c(-0.15, 0.15), percentiles = c(0.99, 0.90, 0.75), leg = F)
