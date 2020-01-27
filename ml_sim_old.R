@@ -1,5 +1,4 @@
 # Script to output random data points for PCA
-# This will only work on a linux machine
 
 library(data.table)
 library(zoo)

@@ -388,6 +388,67 @@ morph_gb <- function(lambda,
 }
 
 
+#### Visualize for Jeramy's Proposal ####
+a <- morph_gb(150000, 0.06, rcp.rad = 0.3, toplot = TRUE)
+b <- morph_gyroid(150000, 0.06, gyroid.scale = 1.5, toplot = TRUE)
 
+over <- read.rcp(paste('~/Research/point_patterns/Final/FinalConfig',toString(14),sep=""),paste('~/Research/point_patterns/Final/system',toString(2),sep=""),scaleUp = TRUE,newRadius = 0.5)
+over.big <- stitch.size(over, boxSize = c(60,60,60))
+sample.ind <- sample(1:npoints(over.big), npoints(over.big)*0.25)
+c <- makecluster(over.big[sample.ind], over.big[sample.ind], 0.5, 0.5, cr = 6, toPlot = TRUE)
+
+
+buttons <- list()
+buttons[[1]] <- list(label = 'Gyroid',
+                       method = 'update',
+                       args = list(list(visible = c(TRUE, FALSE, FALSE))))
+buttons[[2]] <- list(label = 'Grain Boundary',
+                     method = 'update',
+                     args = list(list(visible = c(FALSE, TRUE, FALSE))))
+buttons[[3]] <- list(label = 'Islands',
+                     method = 'update',
+                     args = list(list(visible = c(FALSE, FALSE, TRUE))))
+
+
+p <- plot_ly()
+p <- add_trace(p, type = 'scatter3d', mode = 'markers', data = coords(b)*60,
+               x = ~x, y = ~y, z = ~z,
+               marker = list(opacity = 1, 
+                             size = 1.75,
+                             color = 'red'),
+               visible = TRUE)
+p <- add_trace(p, type = 'scatter3d', mode = 'markers', data = coords(a)*60,
+               x = ~x, y = ~y, z = ~z,
+               marker = list(opacity = 1, 
+                             size = 1.75,
+                             color = 'red'),
+               visible = FALSE)
+p <- add_trace(p, type = 'scatter3d', mode = 'markers', data = coords(c[[1]]),
+               x = ~x, y = ~y, z = ~z,
+               marker = list(opacity = 1, 
+                             size = 1.75,
+                             color = 'red'),
+               visible = FALSE)
+p <- layout(p, 
+            title = 'Interactive Morphology Viewer',
+            scene = list(xaxis = list(range = c(0, 60)),
+                         yaxis = list(range = c(0, 60)),
+                         zaxis = list(range = c(0, 60)),
+                         aspectratio = list(x = 1, y = 1, z = 1)),
+            showlegend = FALSE,
+            updatemenus = list(
+              list(
+                type = 'buttons',
+                #xanchor = 'right',
+                #yanchor = 'top',
+                #x = 1, 
+                #y = 1,
+                active = 0,
+                showactive = TRUE,
+                buttons = buttons
+              )))
+p
+
+saveWidget(p, 'MSA_visualization.html', selfcontained = FALSE)
 
 

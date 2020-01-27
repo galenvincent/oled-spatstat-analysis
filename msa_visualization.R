@@ -2,7 +2,7 @@
 library(rapt)
 library(dplyr)
 library(plotly)
-library(RColorBrewer)
+library(htmlwidgets)
 
 # Upload APT data
 pos <- readPOS('Z:/Galen/Stephan\ APT\ Analysis/R34_06365-v01-CentralCubeExclPole.pos')
@@ -114,7 +114,7 @@ p <- layout(p,
                 buttons = dropdowns
               )))
 
-p
+saveWidget(p, 'MSA_visualization.html', selfcontained = FALSE)
 
 
 library(ks)
