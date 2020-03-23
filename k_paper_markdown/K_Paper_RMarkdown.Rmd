@@ -1,0 +1,204 @@
+---
+title: "Three Dimensional Cluster Analysis for Atom Probe Tomography Using Ripley's K function and Machine Learning -- Code Procedure Summary"
+author: "Galen Vincent"
+date: "March, 2020"
+output: html_document
+bibliography: bibliography.bib
+---
+
+In this document, we will walk through the different coding procedures used to obtain results for the paper *Three Dimensional Cluster Analysis for Atom Probe Tomography Using Ripley's K function and Machine Learning* by Vincent, Proudian, and Zimmerman. Note that most of the computational results presented in the paper were performed on a high performance computing system. The summary below will outline the procedure at a scale that can be run on a personal machine. 
+
+## Install Neccesary Packages
+Install the `rapt` package (**R** for **A**tom **P**robe **T**omography) with all package dependencies. Available on GitHub: https://github.com/aproudian2/rapt. We will also need the `rgl` and `parallel` libraries.
+```{r eval = F}
+install.packages('devtools')
+library(devtools)
+install_github('aproudian2/rapt')
+library(rapt)
+library(rgl)
+library(parallel)
+```
+
+```{r include = F}
+library(rapt)
+library(rgl)
+library(parallel)
+```
+
+
+## Background and Methods
+
+### Simulation of Clusters
+The `clustersim` function within the `rapt` package can be used to simulate clustered point patterns following the procedure described in the main body of this work. Documentation for this function can be found by running the command `?clustersim`. Below, I will walk through the process of simulating and visualizing a clustered point pattern.
+
+First, we need to upload the RCP patterns generated using code by Desmond and Weeks [-@desmond2009random]. This code produces two output files: a "config" file containing the xyz positions of the center of each sphere in the pattern, and a "system" file containing all of the initialization parameters used in the specific simulation. In order to successfully simulate a point pattern, you need to run the RCP generation code. Alternatively, you can use the example files `FinalConfig1` and `system1` files available on my GitHub account. We can upload this information into a `pp3` object using the `read.rcp()` function of the `rapt` package.
+
+```{r}
+rcp.upload <- read.rcp('FinalConfig1', 'system1', scaleUp = TRUE, newRadius = 0.5)
+```
+
+We then use the `stitch.size()` function in `rapt` to "stitch together" the pattern and create a larger volume of RCP points. This stitching is made possible by the periodic boundary conditions of the RCP generation algorithm. We will create a $60 \times 60 \times 60$ volume, as we do in the paper:
+
+```{r}
+rcp.stitched <- stitch.size(rcp.upload, boxSize = c(60,60,60))
+```
+
+Now, for simplicity of this example, we can use this pattern as both the underlying and cluster centroid patterns in our cluster simulation (typically we would use different RCP pattern realizations). Below we simulate a clustered point pattern using the `clustersim()` function with parameters $\eta = 0.1$, $\mu_R = 4$, $\rho_1 = 1$, $\rho_2 = 0$, radius blur = 0, position blur = 0. Note that the plot blow is interactive; feel free to drag it around with your mouse and use the scroll wheel to zoom in and out.
+
+```{r message = F}
+cluster.simple <- clustersim(rcp.stitched, rcp.stitched, 0.5,
+                              pcp = 0.1, cr = 4, 
+                              rho1 = 1, rho2 = 0, 
+                              rb = 0, pb = 0,
+                              toplot = T)
+```
+
+```{r echo = F}
+plotid  <- plot3d(as.data.frame(cluster.simple[[1]]$data))
+rglwidget(elementId = 'clusterSimple', reuse = FALSE)
+```
+
+
+Below is an example with a slightly more "noisy"" set of cluster parameters: $\eta = 0.1$, $\mu_R = 4$, $\rho_1 = 0.4$, $\rho_2 = 0.03$, radius blur = 0.2, position blur = 0.1. 
+
+```{r message = F}
+cluster.noisy <- clustersim(rcp.stitched, rcp.stitched, 0.5,
+                              pcp = 0.1, cr = 4, 
+                              rho1 = 0.4, rho2 = 0.03, 
+                              rb = 0.2, pb = 0.1,
+                              toplot = T)
+```
+
+```{r echo = F}
+plotid  <- plot3d(as.data.frame(cluster.noisy[[1]]$data))
+rglwidget(elementId = 'clusternoisy', reuse = FALSE)
+```
+
+
+
+### T(r) and Metric Extraction
+Next we will get into the process of calculating $T(r)$ for a simulated point pattern. This first step in this process is calculating the raw K-function on a point pattern. To do this, use the `K3est()` function from the `spatstat` library. This function accepts a `pp3` object as its main argument; for our simulated point patterns above, this `pp3` object will be the first entry of the returned list object. Another important argument to this function is the `correction` parameter, which defines which form of edge correction will be implemented. For our work, we use the "translation" correction. For more information on the different types of edge correction, I urge you to explore the book "Spatial Point Patterns" by @baddeley2015spatial. The other arguments to this function determine the maximum $r$ value to measure to, and also the number of $r$ values to measure at along the way.
+
+So, let's compare the $K(r)$ signal from the two different point patterns generated above:
+```{r}
+k.simple <- K3est(cluster.simple[[1]], rmax = 17, nrval = 100, correction = 'translation')
+k.noisy <- K3est(cluster.noisy[[1]], rmax = 17, nrval = 100, correction = 'translation')
+```
+```{r}
+plot(k.simple$r, k.simple$trans, type = 'l', xlab = 'r', ylab = 'K(r)', lwd = 2, col = 'blue')
+lines(k.noisy$r, k.noisy$trans, lwd = 2, col = 'red')
+legend(0, 20000, legend = c('Simple', 'Noisy'), col = c('blue', 'red'), lwd = 2)
+```
+
+Now, looking at this plot, we see that the "Simple" signal appears to oscillate up and down at a larger magnitude than the "Noisy" signal. Intuitively this should make sense; If we think of variation in the K-function as a measure of clustering, the simple signal should be stronger than the noisy signal, as there is stronger clustering occurring in the simple point pattern. 
+
+The two lines shown in the plot above are not the easiest to compare to one another, however, because the magnitude of these differences is relatively small compared to the greater trend of the functions themselves, which appear to be quite similar (increasing in a polynomial fashion). This is where $T(r)$ becomes useful. But, before we can calculate $T(r)$, we need to perform random relabeling of a fraction $\eta = 0.1$ of the UPP to figure out the "expected random signal" that we will subtract from these raw $K(r)$ measurements. We do so in the following code snippet, which utilizes parallel computing to speed up the process (note that we would typically use somewhere in the range of 25000 random relabelings, but this process is computationally expensive and fit for a high performance computing system, so for this vignette we will only perform 100). This snippet utilizes the `pK3est()` function within `rapt`, which allows for a quick parallel computation of this random expected signal. Note that it may take a few minutes to run.
+
+```{r eval = F}
+rrl.data <- pK3est(perc = 0.1, pattern = rcp.stitched, 
+                   nEvals = 100, nrval = 100, rmax = 17, 
+                   correction="trans", anom=TRUE, sorted=FALSE,
+                   cores = 8)
+```
+```{r include = F}
+load('ex_rrl_data.RData')
+```
+
+
+Now, the **square root** of the expected random signal is contained in the second element of the list returned from `pK3est()`. Let's look at how this signal compares to the clustered signals:
+
+```{r}
+plot(k.simple$r, k.simple$trans, type = 'l', xlab = 'r', ylab = 'K(r)', lwd = 2, col = 'blue')
+lines(k.noisy$r, k.noisy$trans, lwd = 2, col = 'red')
+lines(k.noisy$r, rrl.data[[2]]^2, lwd = 2, col = 'black')
+legend(0, 20000, legend = c('Simple', 'Noisy', 'Expected Random'), col = c('blue', 'red', 'black'), lwd = 2)
+```
+
+To get a better comparison, we can instead plot $T(r) = \sqrt{K_\text{A-obs}(r)} - \sqrt{K_{(N/2)}(r)}$ for each of these signals. Note that $T(r) = 0$ for the expected random signal by definition.
+
+```{r}
+t.simple <- data.frame(r = k.simple$r, trans = sqrt(k.simple$trans) - rrl.data[[2]])
+t.noisy <- data.frame(r = k.noisy$r, trans = sqrt(k.noisy$trans) - rrl.data[[2]])
+
+plot(k.simple$r, t.simple$trans, type = 'l', xlab = 'r', ylab = 'T(r)', lwd = 2, col = 'blue')
+lines(k.noisy$r, t.noisy$trans, lwd = 2, col = 'red')
+lines(k.noisy$r, rep(0, 100), lwd = 2, col = 'black')
+legend(0, -5, legend = c('Simple', 'Noisy', 'Expected Random'), col = c('blue', 'red', 'black'), lwd = 2)
+```
+
+And now we really see the advantage of using $T(r)$ as opposed to $K(r)$; The deviations from random are the main focus of the $T(r)$ function, and will therefore be easier to capture and use to make inference about the clustered point patterns that generated them. These $T(r)$ signals could have instead been directly calculated using the `anomK3est` function from the `rapt` library. For the simple cluster pattern, this would be done by running:
+```{r eval = F}
+simple.alt <- anomK3est(pattern = cluster.simple[[1]], toSub = rrl.data[[2]], rmax = 17, nrval = 100)
+```
+
+We can now use the `k3metrics()` function from the `rapt` package to extract the $T(r)$ metrics from the two $T(r)$ signals plotted above.
+```{r}
+mets.simple <- k3metrics(t.simple$r[10:100], t.simple$trans[10:100], toplot = T)
+```
+
+Using the `toplot = TRUE` argument, we get a plot of $T(r)$ (black) and its first three derivatives (red, purple, and blue correspond to first, second, and third derivative respectively). The points associated with each of the five $T(r)$ metrics are also highlighted. The actual object returned from this function is a list containing the values of each metric, where the order is [[1]] Tmax, [[2]] Rmax, [[3]] Rdmin, [[4]]Rd3max, [[5]] Tdmin.
+```{r}
+mets.simple
+```
+We can calculate the same for the noisy clustered data:
+```{r}
+mets.noisy <- k3metrics(t.noisy$r[10:100], t.noisy$trans[10:100], toplot = T, ylim = c(-2, 6))
+```
+
+```{r}
+mets.noisy
+```
+
+And now we have done enough background to really see the purpose of the main portion of the paper; to use these $T(r)$ metrics to make inference about the global properties of the clustered point pattern that lead to them. By inspection, we see that there are vast differences between these metrics for the two patterns we have been playing with above. 
+
+
+
+## Simulation Results
+
+### Training Models for Cluster Parameters
+
+### Visualizing Results
+
+
+
+## Maximum Separation Algorithm
+
+### Introduction
+
+The last part of our paper involves comparing the $T(r)$-metric based inference method to estimates made from the maximum separation algorithm (MSA). The `msa()` function within the `rapt` package allows for easy computation of the MSA on a marked `pp3` object within the R environment. Find documentation for this function by running `?msa`.
+
+We can do a quick example of how this function works using the `cluster.noisy` simulations from earlier in this document. The second element of this lists (the second element of the list returned by the `clustersim()` function) contains the marked `pp3` object that we will pass into the `msa()` function. Guidance for selection of the `dmax`, `Nmin`, `denv`, and `der` parameters is given by @vaumousse2003procedure.
+```{r}
+msa.noisy <- msa(cluster.noisy[[2]], dmax = 1.3, Nmin = 10, denv = 1.3, der = 1.3, clust.mark = c('A','B'))
+```
+
+We can then look at the clusters identified by the maximum separation algorithm compared to the **true** clusters present in the point pattern (we know the truth in this case becasue we simulated it). The red points in the plot below are the MSA found clusters, while the black points are the true clusters.
+
+```{r}
+open3d()
+mfrow3d(nr = 1, nc = 2, sharedMouse = TRUE)
+data.noisy <- as.data.frame(cluster.noisy[[2]]$data)
+data.noisy <- data.noisy[marks(cluster.noisy[[2]]) == 'A',]
+plot3d(data.noisy)
+msa.data.noisy <- as.data.frame(cluster.noisy[[2]]$data)
+msa.data.noisy <- msa.data.noisy[unlist(msa.noisy$A),]
+plot3d(msa.data.noisy, col = 'red')
+rglwidget(elementId = 'msanoisy')
+```
+
+From this plot, we can see that MSA does a relatively good job in this case of identifying the points that reside in each cluster. We know that the true parameters used were $\mu_R = 4$, $\rho_1 = 0.4$, and $\rho_2 = 0.03$. We can compare these values to the values estimated by MSA:
+```{r}
+mean(msa.noisy$radius)
+mean(msa.noisy$den)
+msa.noisy$bgnd.den
+```
+We see that the estimates are generally in the correct neighborhood. Care should be taken in trusting these MSA estiamtes in real data, as they are highly dependent on the parameters `dmax` and `Nmin`. This point is discussed with more detail in the main paper. 
+
+### Use in Paper
+
+
+
+#References
+
+
+

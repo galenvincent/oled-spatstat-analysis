@@ -215,11 +215,15 @@ over <- read.rcp('C:/Users/galen/Documents/Research/point_patterns/Final/FinalCo
 under.big <- stitch.size(under, boxSize = c(60,60,60))
 over.big <- stitch.size(over, boxSize = c(60,60,60))
 
-clust <- makecluster(under.big, over.big, 0.5, 0.5, pcp = 0.0511, 
-                     rb = TRUE,
-                     cr = 3.2, rbp = 3.2*0.436, den = 0.267,
-                     gb = TRUE, gbp = c(0, 3), 
-                     s = 103)
+clust <- clustersim(under.big, over.big, 0.5,
+                    pcp = 0.0511, 
+                    cr = 3.2, 
+                    rb = 0.436, 
+                    rho1 = 0.267,
+                    rho2 = 0.01,
+                    pb = 0.1,
+                    s = 103,
+                    toplot = TRUE)
 
 t.sim <- anomK3est(clust[[1]], toSub, maxr, nr)
 

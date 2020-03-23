@@ -755,24 +755,24 @@ for(i in 1:length(nclust)){
 
 # Actual paper analysis and plots -----------------------------------------
 #### NO RB ####
-# Load training data and calculate PCAs: Select either rb or norb files to load
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/190725_params_norb.RData')
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/190725_sim.res_norb.RData')
+# Load training data: 
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/200131_params_norb.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/200131_sim.res_norb.RData')
 
 # unpack data
-data.unlisted <- matrix(NA, nrow = length(sim.res)*nrow(sim.res[[1]]), ncol = 8)
+data.unlisted <- matrix(NA, nrow = length(sim.res)*nrow(sim.res[[1]]), ncol = 10)
 cnt <- 1
 for(i in 1:length(sim.res)){
   for(j in 1:nrow(sim.res[[1]])){
-    data.unlisted[cnt, 1:3] <- params[[i]]
-    data.unlisted[cnt, 4:8] <- sim.res[[i]][j,]
+    data.unlisted[cnt, 1:5] <- params[[i]]
+    data.unlisted[cnt, 6:10] <- sim.res[[i]][j,]
     cnt <- cnt + 1
   }
 }
 
 data.unlisted <- as.data.frame(data.unlisted) 
-names(data.unlisted) <- c("r","den","gb","Km","Rm","Rdm","Rddm","Kdm")
-data.unlisted$rw <- data.unlisted$r
+names(data.unlisted) <- c("cr","rho1","rho2","rb","pb","Km","Rm","Rdm","Rddm","Kdm")
+data.unlisted$rw <- data.unlisted$cr
 
 #drop NA rows
 data.unlisted <- data.unlisted[complete.cases(data.unlisted),]
@@ -784,26 +784,76 @@ mets <- c("Km","Rm","Rdm","Rddm","Kdm")
 pp.train <- preProcess(data.unlisted[,mets], method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
 
 # Upload test data
-load('Z:/Galen/Machine\ Learning\ Files/Test\ Data/ml.test.results.norb.RData')
+load('Z:/Galen/Machine\ Learning\ Files/Test\ Data/test.results_norb.RData')
 test.set <- as.data.frame(test.set)
-names(test.set) <- c("r","den","gb","Km","Rm","Rdm","Rddm","Kdm")
+names(test.set) <- c("cr","rho1","rho2","rb","pb","Km","Rm","Rdm","Rddm","Kdm")
 test.set <- test.set[complete.cases(test.set),]
-test.set$rw <- test.set$r
+test.set$rw <- test.set$cr
 
 test.pca <- predict(pp.train, test.set[,mets])
 test <- data.frame(test.set, test.pca)
 
-# Upload model of choice
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_norb_r.RData')
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_norb_4met_r.RData')
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_norb_2met_r.RData')
+# Do all at once:
+model.list <- c('ml.models_rw_norb.RData', 'ml.models_rw_4met_norb.RData', 'ml.models_rw_2met_norb.RData',
+                'ml.models_rho1_norb.RData', 'ml.models_rho1_4met_norb.RData', 'ml.models_rho1_2met_norb.RData',
+                'ml.models_rho2_norb.RData', 'ml.models_rho2_4met_norb.RData', 'ml.models_rho2_2met_norb.RData')
 
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_norb_den.RData')
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_norb_4met_den.RData')
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_norb_2met_den.RData')
+out.list <- c('rw', 'rw', 'rw', 'rho1', 'rho1', 'rho1', 'rho2', 'rho2', 'rho2')
+
+mets.list <- list(c("Km","Rm","Rdm","Rddm","Kdm"), c("Km","Rm","Rdm","Kdm"), c("Km","Rm"),
+                  c("Km","Rm","Rdm","Rddm","Kdm"), c("Km","Rm","Rdm","Kdm"), c("Km","Rm"),
+                  c("Km","Rm","Rdm","Rddm","Kdm"), c("Km","Rm","Rdm","Kdm"), c("Km","Rm"))
+
+n <- length(out.list)
+model.RMSE <- lapply(1:n, function(i){
+  mets <- mets.list[[i]]
+  pp.train <- preProcess(data.unlisted[,mets], method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
+  
+  test.pca <- predict(pp.train, test.set[,mets])
+  test <- data.frame(test.set, test.pca)
+  
+  load(paste('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/', model.list[i], sep = ''))
+  
+  out <- out.list[i]
+  
+  predictors <- sapply(1:(ncol(test) - 11),function(x){paste('PC',toString(x),sep = '')})
+  
+  print(model.list[i])
+  
+  toRound <- 6
+  model.res <- sapply(models, function(x){
+    a <- predict(x, newdata = test[,predictors])
+    RMSE <- sqrt(mean((a-test[,out])^2))
+    #plot(test[,out], a, main = x$method, xlab = "Input Simulation Value", ylab = "Estimated Value")
+    #abline(0,1, col = "red", lwd = 1.25)
+    print(x$method)
+    print(paste('RMSE: ', toString(round(RMSE,toRound)), sep = ''))
+    return(RMSE)
+  })
+  
+  return(model.res)
+  
+  rm(models, mets, pp.train, test.pca, test, out, predictors, model.res)
+  gc()
+})
+
+
+# Upload model of choice
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rw_norb.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rw_4met_norb.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rw_2met_norb.RData')
+
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho1_norb.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho1_4met_norb.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho1_2met_norb.RData')
+
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho2_norb.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho2_4met_norb.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho2_2met_norb.RData')
 
 predictors <- sapply(1:length(mets),function(x){paste('PC',toString(x),sep = '')})
-out <- 'den'
+
+out <- 'rho2'
 
 # Test models
 toRound <- 6
@@ -823,26 +873,26 @@ gc()
 
 #### RB ####
 # Load training data and calculate PCAs: Select either rb or norb files to load
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/190725_params.RData')
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/190725_sim.res.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/200131_params.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/200131_sim.res.RData')
 
 # unpack data
-data.unlisted <- matrix(NA, nrow = length(sim.res)*nrow(sim.res[[1]]), ncol = 9)
+data.unlisted <- matrix(NA, nrow = length(sim.res)*nrow(sim.res[[1]]), ncol = 10)
 
 cnt <- 1
 for(i in 1:length(sim.res)){
   for(j in 1:nrow(sim.res[[1]])){
-    data.unlisted[cnt, 1:4] <- params[[i]]
-    data.unlisted[cnt, 5:9] <- sim.res[[i]][j,]
+    data.unlisted[cnt, 1:5] <- params[[i]]
+    data.unlisted[cnt, 6:10] <- sim.res[[i]][j,]
     cnt <- cnt + 1
   }
 }
 
 data.unlisted <- as.data.frame(data.unlisted) 
-names(data.unlisted) <- c("r","den","rb","gb","Km","Rm","Rdm","Rddm","Kdm")
-data.unlisted$rw <- (data.unlisted$r^4 + 6* (data.unlisted$r^2) *(data.unlisted$rb * data.unlisted$r)^2 + 3 *(data.unlisted$rb * data.unlisted$r)^4)/(data.unlisted$r^3 + 3*data.unlisted$r*(data.unlisted$rb * data.unlisted$r)^2)
-data.unlisted$sigma <- data.unlisted$rb * data.unlisted$r
-
+names(data.unlisted) <- c("cr","rho1","rho2","rb","pb","Km","Rm","Rdm","Rddm","Kdm")
+data.unlisted$sigma <- data.unlisted$rb * data.unlisted$cr
+data.unlisted$rw <- (data.unlisted$cr^4 + 6* data.unlisted$cr^2 * data.unlisted$sigma^2 + 3*data.unlisted$sigma^4)/
+  (data.unlisted$cr^3 + 3*data.unlisted$cr*data.unlisted$sigma^2)
 
 #drop NA rows
 data.unlisted <- data.unlisted[complete.cases(data.unlisted),]
@@ -853,51 +903,77 @@ mets <- c("Km","Rm","Rdm","Rddm","Kdm")
 #mets <- c("Km","Rm")
 pp.train <- preProcess(data.unlisted[,mets], method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
 
-
-# SCALE DATA BY THE MEAN AND SD OF THE TRAINING SET (if needed)!!!!
-data.scaled <- as.data.frame(apply(data.unlisted[,mets], 2, function(x){(x - mean(x))/sd(x)}))
-names(data.scaled) <- c("sKm","sRm","sRdm","sRddm","sKdm")
-
-train <- data.frame(data.unlisted, data.scaled)
-
 # Upload test data
-load('Z:/Galen/Machine\ Learning\ Files/Test\ Data/ml.test.results.RData')
+load('Z:/Galen/Machine\ Learning\ Files/Test\ Data/test.results.RData')
 test.set <- as.data.frame(test.set)
-names(test.set) <- c("r","den","rb","gb","Km","Rm","Rdm","Rddm","Kdm")
+names(test.set) <- c("cr","rho1","rho2","rb","pb","Km","Rm","Rdm","Rddm","Kdm")
 test.set <- test.set[complete.cases(test.set),]
-test.set$rw <- (test.set$r^4 + 6* (test.set$r^2) *(test.set$rb * test.set$r)^2 + 3 *(test.set$rb * test.set$r)^4)/(test.set$r^3 + 3*test.set$r*(test.set$rb * test.set$r)^2)
-test.set$sigma <- test.set$rb * test.set$r
-
-# SCALE TEST DATA (if needed)!!!!
-test.scaled <- as.data.frame(apply(test.set[,mets], 2, function(x){(x - mean(x))/sd(x)}))
-names(test.scaled) <- c("sKm","sRm","sRdm","sRddm","sKdm")
+test.set$sigma <- test.set$cr * test.set$rb
+test.set$rw <- (test.set$cr^4 + 6* test.set$cr^2 * test.set$sigma^2 + 3*test.set$sigma^4)/
+  (test.set$cr^3 + 3*test.set$cr*test.set$sigma^2)
 
 test.pca <- predict(pp.train, test.set[,mets])
-test <- data.frame(test.set, test.scaled, test.pca)
+test <- data.frame(test.set, test.pca)
 
+# Do all at once:
+model.list <- c('ml.models_rw.RData', 'ml.models_rw_4met.RData', 'ml.models_rw_2met.RData',
+                'ml.models_rho1.RData', 'ml.models_rho1_4met.RData', 'ml.models_rho1_2met.RData',
+                'ml.models_rho2.RData', 'ml.models_rho2_4met.RData', 'ml.models_rho2_2met.RData')
 
+out.list <- c('rw', 'rw', 'rw', 'rho1', 'rho1', 'rho1', 'rho2', 'rho2', 'rho2')
 
+mets.list <- list(c("Km","Rm","Rdm","Rddm","Kdm"), c("Km","Rm","Rdm","Kdm"), c("Km","Rm"),
+                  c("Km","Rm","Rdm","Rddm","Kdm"), c("Km","Rm","Rdm","Kdm"), c("Km","Rm"),
+                  c("Km","Rm","Rdm","Rddm","Kdm"), c("Km","Rm","Rdm","Kdm"), c("Km","Rm"))
+
+n <- length(out.list)
+model.RMSE <- lapply(1:n, function(i){
+  mets <- mets.list[[i]]
+  pp.train <- preProcess(data.unlisted[,mets], method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
+  
+  test.pca <- predict(pp.train, test.set[,mets])
+  test <- data.frame(test.set, test.pca)
+  
+  load(paste('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/', model.list[i], sep = ''))
+  
+  out <- out.list[i]
+  
+  predictors <- sapply(1:(ncol(test) - 12),function(x){paste('PC',toString(x),sep = '')})
+  
+  print(model.list[i])
+  
+  toRound <- 6
+  model.res <- sapply(models, function(x){
+    a <- predict(x, newdata = test[,predictors])
+    RMSE <- sqrt(mean((a-test[,out])^2))
+    #plot(test[,out], a, main = x$method, xlab = "Input Simulation Value", ylab = "Estimated Value")
+    #abline(0,1, col = "red", lwd = 1.25)
+    print(x$method)
+    print(paste('RMSE: ', toString(round(RMSE,toRound)), sep = ''))
+    return(RMSE)
+  })
+  
+  return(model.res)
+  
+  rm(models, mets, pp.train, test.pca, test, out, predictors, model.res)
+  gc()
+})
 
 # Upload model of choice
 load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rw.RData')
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_4met_rw.RData')
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_2met_rw.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rw_4met.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rw_2met.RData')
 
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_den.RData')
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_4met_den.RData')
-load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_2met_den.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho1.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho1_4met.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho1_2met.RData')
 
-load('Z:/Galen/Machine\ Learning\ Files/no\ PCA\ test/ml.models_rw_noPCA.RData')
-load('Z:/Galen/Machine\ Learning\ Files/no\ PCA\ test/ml.models_den_noPCA.RData')
-
-load('Z:/Galen/Machine\ Learning\ Files/no\ PCA\ test/ml.models_rw_noPCA_scaled.RData')
-load('Z:/Galen/Machine\ Learning\ Files/no\ PCA\ test/ml.models_den_noPCA_scaled.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho2.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho2_4met.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho2_2met.RData')
 
 predictors <- sapply(1:length(mets),function(x){paste('PC',toString(x),sep = '')})
-predictors <- mets
-predictors <- c("sKm","sRm","sRdm","sRddm","sKdm")
-out <- 'rw'
-
+out <- 'rho2'
 
 # Test models
 toRound <- 6
@@ -919,6 +995,7 @@ rm(pp.train, test)
 
 # Residual analysis and plots ---------------------------------------------
 pred.full <- extractPrediction(models[3], testX = test[,predictors], testY = test[,out])
+#pred.full <- extractPrediction(models[4], testX = test[,predictors], testY = test[,out])
 pred <- pred.full[pred.full$dataType == 'Test',]
 defaultSummary(pred)
 diff <- pred$obs - pred$pred
@@ -928,20 +1005,21 @@ hist(diff, breaks = 100, xlim = c(-2,2))
 hist(diff.perc, breaks = 100, xlab = 'Percent Error', ylab = 'Frequency')
 qqnorm(diff)
 qqnorm(diff.perc)
-qqline(diff)
+qqline(diff.perc)
 
 # Percent error error plot
 percs <- c(50, 75, 90)
 cols <- brewer.pal(3, "Set1")
-downsample.ratio <- 0.5
+downsample.ratio <- 0.25
 par(mar = c(4, 4, 2, 2), mgp = c(2.3, 1, 0))
 
 n <- length(diff.perc)
 diff.perc.sorted <- sort(abs(diff.perc))
+#diff.perc.sorted <- sort(abs(diff))
 xs <- (1:n)*100/n
 
 plot(xs, diff.perc.sorted, 
-     xlab = 'Sorted Data Percentile', ylab = 'Percent Error',
+     xlab = 'Error Percentile', ylab = 'Percent Error',
      type = 'n')
 vals <- list('all' = data.frame('perc' = xs, 'error' = diff.perc.sorted))
 ind <- rep(0, length(percs)+1)
@@ -952,7 +1030,9 @@ for(i in 1:length(percs)){
   sample.inds <- sample(1:n.i, round(n.i*downsample.ratio))
   points(vals[[i+1]]$perc[sample.inds], vals[[i+1]]$error[sample.inds], pch = 16, col = cols[i], cex = 1)
   segments(-10, tail(vals[[i+1]]$error, n = 1), tail(vals[[i+1]]$perc, n = 1), tail(vals[[i+1]]$error, n = 1),
-           col = 'red', lwd = 1.5)
+           col = cols[i], lwd = 2, lty = 2)
+  segments(tail(vals[[i+1]]$perc, n = 1), -10, tail(vals[[i+1]]$perc, n = 1), tail(vals[[i+1]]$error, n = 1),
+           col = cols[i], lwd = 2, lty = 2)
   #text(0, tail(vals[[i+1]]$error, n = 1) + 1.25, paste(toString(percs[i]), '% of data'), pos = 4, cex = 0.75, col = 'red')
 }
 ind.last <- (tail(ind, n = 1 )+1):n
@@ -960,10 +1040,11 @@ points(vals$all$perc[ind.last], vals$all$error[ind.last], col = 'black', pch = 1
 
 # 1:1 points envelope plot
 sorted <- data.frame('obs' = pred$obs[order(abs(diff.perc))], 'pred' = pred$pred[order(abs(diff.perc))])
+#sorted <- data.frame('obs' = pred$obs[order(abs(diff))], 'pred' = pred$pred[order(abs(diff))])
 n <- nrow(sorted)
 
 plot(sorted$obs, sorted$pred, col = 'black', pch = 16, type = 'n',
-     xlab = 'Input Simiulation Value', ylab = 'Estimated Value')
+     xlab = 'Simiulation Input', ylab = 'Estimated')
 
 vals.subed <- list('all' = sorted)
 for(i in 1:length(percs)){
@@ -981,7 +1062,7 @@ for(i in 1:(length(leg)-1)){
 }
 leg[length(leg)] <- '100%'
 
-legend(.2, 1, legend = leg, col = c(cols, 'black'), pch = 16, cex = 1, title = 'Sorted Data Percentile:', bty = 'n')
+legend(.023, 0.0065, legend = leg, col = c(cols, 'black'), pch = 16, cex = 1, title = 'Error \n Percentile:', bty = 'n')
 abline(0, 1, col = 'black', lty = 2, lwd = 1.5)
 
 #### Error as a function of parameter ####
@@ -989,7 +1070,7 @@ pred.full <- predict(models$brnn, newdata = test[,predictors])
 diff <- test[,out] - pred.full
 diff.perc <- diff*100/test[,out]
 
-param <- 'r'
+param <- 'pb'
 lmod <- lm(abs(diff.perc) ~ test[,param])
 par(mgp = c(2.25, 1, 0), mar = c(3.5, 3.5, 2, 2))
 plot(test[ ,param], abs(diff.perc), xlab = param, ylab = 'Percent Error')
@@ -998,7 +1079,9 @@ text(2, 50,
      paste('y = ', toString(round(lmod$coefficients[1], 3)), ' + ', toString(round(lmod$coefficients[2], 3)), 'x', sep = ''),
      pos = 4)
 
-cor(test[,param], abs(diff.perc))
+params <- c('cr', 'rb', 'rw', 'rho1', 'rho2', 'pb')
+sapply(params, function(x){cor(test[,x], abs(diff.perc))})
+
 
 
 

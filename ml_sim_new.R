@@ -31,8 +31,10 @@ print("Parameter set initialized...")
 print(paste("Total parameters to test: ", toString(nrand), sep = ''))
 
 # Upload cube RRL files
-toSub <- fread('~/Research/K_cluster_series/cubetoSub_r35.csv', drop=1)
-env.r <- fread('~/Research/K_cluster_series/cube_r35.csv', select=2)
+#toSub <- fread('~/Research/K_cluster_series/cubetoSub_r35_6percent.csv', drop=1)
+#env.r <- fread('~/Research/K_cluster_series/cube_r35.csv', select=2)
+
+toSub <- fread('RCP_RRL_toSub_5.1percent.csv')
 
 # HPC
 #toSub <- fread('cubetoSub_r35.csv', drop=1)

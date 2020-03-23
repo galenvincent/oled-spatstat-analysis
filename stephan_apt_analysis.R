@@ -92,7 +92,6 @@ mks <- rep('B', npoints(pp3.full.scaled))
 mks[mks.ind] <- 'A'
 marks(X) <- mks
 
-
 # Get K-functions for all aggregate combinations
 to.run <- list(pp3.mg.scaled, pp3.zn.scaled, pp3.agg.scaled)
 cl <- makePSOCKcluster(3)
@@ -102,6 +101,7 @@ t1 <- Sys.time()
 res <- parLapply(cl, to.run, function(x){
   return(K3est(x, rmax = 35, nrval = 400, correction = 'translation'))
 })
+stopCluster(cl)
 t2 <- Sys.time()
 print(t2 - t1)
 
@@ -113,6 +113,7 @@ k.agg <- res[[3]]
 load('Z:/Galen/Stephan\ APT\ Analysis/stephan_RRL_data_r35.RData')
 rrls <- stephan.RRL.data
 rm(stephan.RRL.data)
+gc()
 
 # Transform aggregate k-functions to T(r)
 t.mg <- data.frame('r' = k.mg$r, 'T' = sqrt(k.mg$trans) - rrls[[2]])
@@ -129,28 +130,29 @@ names(met.agg) <- c("Km","Rm","Rdm","Rddm","Kdm")
 
 
 # Upload training data to get PCA transformation:
-load('Z:/Galen/Stephan\ APT\ Analysis/stephan_params.RData')
-load('Z:/Galen/Stephan\ APT\ Analysis/stephan_sim.res.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/200131_params.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/200131_sim.res.RData')
 
-data.unlisted <- matrix(NA, nrow = length(sim.res)*nrow(sim.res[[1]]), ncol = 9)
+# unpack data
+data.unlisted <- matrix(NA, nrow = length(sim.res)*nrow(sim.res[[1]]), ncol = 10)
 
 cnt <- 1
 for(i in 1:length(sim.res)){
   for(j in 1:nrow(sim.res[[1]])){
-    data.unlisted[cnt, 1:4] <- params[[i]]
-    data.unlisted[cnt, 5:9] <- sim.res[[i]][j,]
+    data.unlisted[cnt, 1:5] <- params[[i]]
+    data.unlisted[cnt, 6:10] <- sim.res[[i]][j,]
     cnt <- cnt + 1
   }
 }
 
 data.unlisted <- as.data.frame(data.unlisted) 
-names(data.unlisted) <- c("r","den","rb","gb","Km","Rm","Rdm","Rddm","Kdm")
-data.unlisted$rw <- (data.unlisted$r^4 + 6* (data.unlisted$r^2) *(data.unlisted$rb * data.unlisted$r)^2 + 3 *(data.unlisted$rb * data.unlisted$r)^4)/(data.unlisted$r^3 + 3*data.unlisted$r*(data.unlisted$rb * data.unlisted$r)^2)
-data.unlisted$sigma <- data.unlisted$rb * data.unlisted$r
+names(data.unlisted) <- c("cr","rho1","rho2","rb","pb","Km","Rm","Rdm","Rddm","Kdm")
+data.unlisted$sigma <- data.unlisted$rb * data.unlisted$cr
+data.unlisted$rw <- (data.unlisted$cr^4 + 6* data.unlisted$cr^2 * data.unlisted$sigma^2 + 3*data.unlisted$sigma^4)/
+  (data.unlisted$cr^3 + 3*data.unlisted$cr*data.unlisted$sigma^2)
 
 #drop NA rows
 data.unlisted <- data.unlisted[complete.cases(data.unlisted),]
-
 mets <- c("Km","Rm","Rdm","Rddm","Kdm")
 pp.train <- preProcess(data.unlisted[,mets], method = c("scale", "center", "pca", "BoxCox"), thresh = 1)
 
@@ -162,24 +164,26 @@ test.pca <- predict(pp.train, test.df[,mets])
 test <- data.frame(test.df, test.pca)
 
 #OR use test data
-load('Z:/Galen/Stephan\ APT\ Analysis/stephan_ml.test.results.RData')
+load('Z:/Galen/Machine\ Learning\ Files/Test\ Data/test.results.RData')
 test.set <- as.data.frame(test.set)
-names(test.set) <- c("r","den","rb","gb","Km","Rm","Rdm","Rddm","Kdm")
+names(test.set) <- c("cr","rho1","rho2","rb","pb","Km","Rm","Rdm","Rddm","Kdm")
 test.set <- test.set[complete.cases(test.set),]
-test.set$rw <- (test.set$r^4 + 6* (test.set$r^2) *(test.set$rb * test.set$r)^2 + 3 *(test.set$rb * test.set$r)^4)/(test.set$r^3 + 3*test.set$r*(test.set$rb * test.set$r)^2)
-test.set$sigma <- test.set$rb * test.set$r
+test.set$sigma <- test.set$cr * test.set$rb
+test.set$rw <- (test.set$cr^4 + 6* test.set$cr^2 * test.set$sigma^2 + 3*test.set$sigma^4)/
+  (test.set$cr^3 + 3*test.set$cr*test.set$sigma^2)
 
 test.pca <- predict(pp.train, test.set[,mets])
 test <- data.frame(test.set, test.pca)
 
 
 # Load Model
-load('Z:/Galen/Stephan\ APT\ Analysis/ml.models_rw.RData')
-load('Z:/Galen/Stephan\ APT\ Analysis/ml.models_den.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rw.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho1.RData')
+load('Z:/Galen/Machine\ Learning\ Files/10000x10\ sims\ and\ models/ml.models_rho2.RData')
 
 #Test model on simulated (or real) data:
 predictors <- sapply(1:length(mets),function(x){paste('PC',toString(x),sep = '')})
-out <- 'den'
+out <- 'rw'
 
 # Test models
 toRound <- 6
@@ -198,48 +202,64 @@ gc()
 
 ## Get confidence intervals from the simulated data
 preds.rw <- predict(models[[3]], newdata = test[,predictors])
-preds.den <- predict(models[[3]], newdata = test[,predictors])
-preds.all <- data.frame('rw' = test$rw, 'den' = test$den, 'rw.pred' = preds.rw, 'den.pred' = preds.den)
+preds.rho1 <- predict(models[[3]], newdata = test[,predictors])
+preds.rho2 <- predict(models[[3]], newdata = test[,predictors])
 
-perc.buffer <- 0.025
+preds.all <- data.frame('rw' = test$rw, 'rho1' = test$rho1, 'rho2' = test$rho2, 
+                        'rw.pred' = preds.rw, 'rho1.pred' = preds.rho1, 'rho2.pred' = preds.rho2)
+
+perc.buffer <- 0.075
 rw.buffer <- diff(range(preds.all$rw))*perc.buffer
-den.buffer <- diff(range(preds.all$den))*perc.buffer
-preds.cut <- preds.all[abs(preds.all$rw.pred - 4.586579) < rw.buffer &
-                         abs(preds.all$den.pred - 0.2668857) < den.buffer, ]
+rho1.buffer <- diff(range(preds.all$rho1))*perc.buffer
+rho2.buffer <- diff(range(preds.all$rho2))*perc.buffer
+
+preds.cut <- preds.all[abs(preds.all$rw.pred - 5.192789) < rw.buffer &
+                         abs(preds.all$rho1.pred - 0.2118379) < rho1.buffer &
+                         abs(preds.all$rho2.pred - 0.02494626) < rho2.buffer, ]
+
 preds.cut$rw.diff.perc <- (preds.cut$rw.pred - preds.cut$rw)/preds.cut$rw
-preds.cut$den.diff.perc <- (preds.cut$den.pred - preds.cut$den)/preds.cut$den
-pd.sorted <- data.frame('rw' = sort(preds.cut$rw.diff.perc), 'den' = sort(preds.cut$den.diff.perc))
+preds.cut$rho1.diff.perc <- (preds.cut$rho1.pred - preds.cut$rho1)/preds.cut$rho1
+preds.cut$rho2.diff.perc <- (preds.cut$rho2.pred - preds.cut$rho2)/preds.cut$rho2
+
+pd.sorted <- data.frame('rw' = sort(preds.cut$rw.diff.perc), 
+                        'rho1' = sort(preds.cut$rho1.diff.perc), 
+                        'rho2' = sort(preds.cut$rho2.diff.perc))
+
 level <- 0.9
 percentiles <- c((1-level)/2, level + (1-level)/2)
+
 nobs <- nrow(pd.sorted)
 inds <- round(percentiles*nobs)
-CI.90 <- data.frame('rw' = 4.586579*(1+pd.sorted$rw[inds]), 'den' = 0.2668857*(1+pd.sorted$den[inds]))
+
+CI.90 <- data.frame('rw' = 5.192789*(1+pd.sorted$rw[inds]), 
+                    'rho1' = 0.2118379*(1+pd.sorted$rho1[inds]),
+                    'rho2' = 0.02494626*(1+pd.sorted$rho2[inds]))
 CI.90
 
 #### Run msa algoritm with varied parameter space ####
-nmins <- seq(5, 50, 5)
-dmaxs <- seq(0.5, 2.5, 0.1)
+nmins <- c(5, 10, 15, 20)
+dmaxs <- seq(1, 2, 0.1)
 params.to.sweep <- expand.grid(nmins, dmaxs)
 
 msa.sweep <- lapply(1:nrow(params.to.sweep), function(i){
   print(i)
-  return(msa(X, params.to.sweep[i,2], params.to.sweep[i,1], params.to.sweep[i,2], params.to.sweep[i,2]))
+  return(msa(X, params.to.sweep[i,2], params.to.sweep[i,1], params.to.sweep[i,2], params.to.sweep[i,2], clust.mark = c('A')))
 })
 
 msa.sweep.reduced <- lapply(msa.sweep, function(x){
   if(is.na(x)){return(NA)}
-  return(data.frame('rad' = x$radius, 'den' = x$den))
+  return(data.frame('rad' = x$radius, 'den' = x$den, 'bgnd.den' = x$bgnd.den))
 })
 
 save(msa.sweep.reduced, file = 'msa.sweep.RData')
 save(params.to.sweep, file = 'msa.sweep.params.RData')
 
 ## Analyze the above:
-load('msa.sweep.RData')
-load('msa.sweep.params.RData')
+load('Z:/Galen/MSA/stephan_msa.RData')
+load('Z:/Galen/MSA/stephan_msa.params.RData')
 
-msa.params.cut <- msa.params[msa.params$Var1 %in% c(5, 10, 15, 20) & msa.params$Var2 >= 1 & msa.params$Var2 <= 2, ]
-msa.cut <- msa.sweep[msa.params$Var1 %in% c(5, 10, 15, 20) & msa.params$Var2 >= 1 & msa.params$Var2 <= 2]
+msa.params.cut <- params.to.sweep
+msa.cut <- msa.sweep.reduced
 
 msa.cut.summary <- lapply(msa.cut, function(x){
   if(is.na(x)){return(data.frame('rc' = NA, 'rwT' = NA, 'rwE' = NA, 'rho' = NA))}
@@ -247,35 +267,51 @@ msa.cut.summary <- lapply(msa.cut, function(x){
   Rc <- mean(x$rad)
   Rw_true <- mean(x$rad*(4/3)*pi*(x$rad)^3)/mean((4/3)*pi*(x$rad)^3)
   Rw_est <- (Rc^4 + 6*Rc^2*sigma^2 + 3*sigma^4)/(Rc^3 + 3*Rc*sigma^2)
-  rho <- mean(x$den)
-  return(data.frame('rc' = Rc, 'rwT' = Rw_true, 'rwE' = Rw_est, 'rho' = rho, 'sig'= sigma))
+  rho1 <- mean(x$den)
+  rho2 <- mean(x$bgnd.den)
+  return(data.frame('rc' = Rc, 'rwT' = Rw_true, 'rwE' = Rw_est, 'rho1' = rho1, 'rho2' = rho2, 'sig'= sigma))
 })
 
 #re-arrange data for plotting
-msa.all <- matrix(NA, nrow = length(msa.cut), ncol = 7)
+msa.all <- matrix(NA, nrow = length(msa.cut), ncol = 8)
 for(i in 1:length(msa.cut)){
-  if(any(is.na(msa.cut.summary[[i]]))){msa.all[i,] <- rep(NA, 7)}
+  if(any(is.na(msa.cut.summary[[i]]))){msa.all[i,] <- rep(NA, 8)}
   else {msa.all[i,] <- as.numeric(c(msa.params.cut[i,], msa.cut.summary[[i]]))}
 }
 msa.all <- as.data.frame(msa.all)
-names(msa.all) <- c('Nmin', 'dmax', 'rc', 'rwT', 'rwE', 'rho', 'sig')
+names(msa.all) <- c('Nmin', 'dmax', 'rc', 'rwT', 'rwE', 'rho1', 'rho2', 'sig')
 
 plot(msa.all$dmax, msa.all$rwT, col = msa.all$Nmin/5, pch = 16,
      xlab = 'dmax', ylab = 'Weighted Radius')
-abline(h = 4.586, col = 'red', lwd = 2)
-abline(h = 4.898596, col = 'red', lwd = 2, lty = 2)
-abline(h = 4.254800, col = 'red', lwd = 2, lty = 2)
+abline(h = 5.192, col = 'black', lwd = 2)
+abline(h = 5.700, col = 'black', lwd = 2, lty = 2)
+abline(h = 4.915, col = 'black', lwd = 2, lty = 2)
 legend(0.95, 13, legend = c('Nmin = 5', 'Nmin = 10', 'Nmin = 15', 'Nmin= 20'), col = c(1, 2, 3, 4), pch = 16, bty = 'n')
-legend(1.3, 13, legend = c('ML Model Prediction', 'ML Model 90% CI'), col = 'red', lwd = 2, lty = c(1, 2), bty = 'n')
+legend(1.3, 13, legend = c('ML Model Prediction', 'ML Model 90% CI'), col = 'black', lwd = 2, lty = c(1, 2), bty = 'n')
 
-plot(msa.all$dmax, msa.all$rho, col = msa.all$Nmin/5, pch = 16,
-     xlab = 'dmax', ylab = 'Rho',
-     ylim = c(0.2, 0.7))
-abline(h = 0.266885, col = 'red', lwd = 2)
-abline(h = 0.2518972, col = 'red', lwd = 2, lty = 2)
-abline(h = 0.2868387, col = 'red', lwd = 2, lty = 2)
-legend(1, 0.55, legend = c('Nmin = 5', 'Nmin = 10', 'Nmin = 15', 'Nmin= 20'), col = c(1, 2, 3, 4), pch = 16, bty = 'n')
-legend(1.35, 0.73, legend = c('ML Model Prediction', 'ML Model 90% CI'), col = 'red', lwd = 2, lty = c(1, 2), bty = 'n')
+plot(msa.all$dmax, msa.all$rho1, col = msa.all$Nmin/5, pch = 16,
+     xlab = 'dmax', ylab = 'Rho1',
+     ylim = c(0.15, 0.7))
+abline(h = 0.212, col = 'black', lwd = 2)
+abline(h = 0.171, col = 'black', lwd = 2, lty = 2)
+abline(h = 0.255, col = 'black', lwd = 2, lty = 2)
+legend(1, 0.50, legend = c('Nmin = 5', 'Nmin = 10', 'Nmin = 15', 'Nmin= 20'), col = c(1, 2, 3, 4), pch = 16, bty = 'n')
+legend(1.35, 0.73, legend = c('ML Model Prediction', 'ML Model 90% CI'), col = 'black', lwd = 2, lty = c(1, 2), bty = 'n')
+
+plot(msa.all$dmax, msa.all$rho2, col = msa.all$Nmin/5, pch = 16,
+     xlab = 'dmax', ylab = 'Rho2',
+     ylim = c(0, 0.06))
+abline(h = 0.0249, col = 'black', lwd = 2)
+abline(h = 0.0212, col = 'black', lwd = 2, lty = 2)
+abline(h = 0.0307, col = 'black', lwd = 2, lty = 2)
+legend(1, 0.02, legend = c('Nmin = 5', 'Nmin = 10', 'Nmin = 15', 'Nmin= 20'), col = c(1, 2, 3, 4), pch = 16, bty = 'n')
+legend(1.4, 0.02, legend = c('ML Model Prediction', 'ML Model 90% CI'), col = 'black', lwd = 2, lty = c(1, 2), bty = 'n')
+
+plot(msa.all$dmax, msa.all$rc, col = msa.all$Nmin/5, pch = 16,
+     xlab = 'dmax', ylab = 'Mean Cluster Radius (arb.)',
+     ylim = c(0, 8))
+legend(1, 0.5, legend = c('Nmin = 5', 'Nmin = 10', 'Nmin = 15', 'Nmin= 20'), col = c(1, 2, 3, 4), pch = 16, bty = 'n')
+
 
 
 #### Simulate clusters on stephan's background and test the models: ####
